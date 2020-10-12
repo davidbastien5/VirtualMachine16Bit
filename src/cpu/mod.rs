@@ -1,5 +1,5 @@
 use crate::{instructions, memory};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 const REGISTER_NAMES: [&str; 10] = ["ip", "acc", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"];
 
@@ -113,5 +113,22 @@ impl CPU {
     pub fn step(&mut self) -> Result<(), String> {
         let instruction = self.fetch()?;
         self.execute(instruction)
+    }
+}
+
+impl fmt::Debug for CPU {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CPU")
+            .field("ip", &format!("{:#06X}", self.get_register("ip").unwrap()))
+            .field("acc", &format!("{:#06X}", self.get_register("acc").unwrap()))
+            .field("r1", &format!("{:#06X}", self.get_register("r1").unwrap()))
+            .field("r2", &format!("{:#06X}", self.get_register("r2").unwrap()))
+            .field("r3", &format!("{:#06X}", self.get_register("r3").unwrap()))
+            .field("r4", &format!("{:#06X}", self.get_register("r4").unwrap()))
+            .field("r5", &format!("{:#06X}", self.get_register("r5").unwrap()))
+            .field("r6", &format!("{:#06X}", self.get_register("r6").unwrap()))
+            .field("r7", &format!("{:#06X}", self.get_register("r7").unwrap()))
+            .field("r8", &format!("{:#06X}", self.get_register("r8").unwrap()))
+            .finish()
     }
 }
