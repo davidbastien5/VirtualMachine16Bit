@@ -48,4 +48,12 @@ impl CPU {
         self.registers[*index + 1] = bytes[1];
         Ok(())
     }
+
+    pub fn fetch(&mut self) -> Result<u8, String> {
+        let instruction_address = self.get_register("ip")?;
+        let instruction = self.memory[instruction_address as usize];
+        self.set_register("ip", instruction_address + 1)?;
+
+        Ok(instruction)
+    }
 }
