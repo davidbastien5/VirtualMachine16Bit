@@ -1,4 +1,4 @@
-use crate::memory;
+use crate::{instructions, memory};
 use std::collections::HashMap;
 
 const REGISTER_NAMES: [&str; 10] = ["ip", "acc", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"];
@@ -77,19 +77,19 @@ impl CPU {
     pub fn execute(&mut self, instruction: u8) -> Result<(), String> {
         match instruction {
             // Move literal to the r1 register
-            0x10 => {
+            instructions::MOV_LIT_R1 => {
                 let literal = self.fetch16()?;
                 self.set_register("r1", literal)?;
             }
 
             // Move literal to the r2 register
-            0x11 => {
+            instructions::MOV_LIT_R2 => {
                 let literal = self.fetch16()?;
                 self.set_register("r2", literal)?;
             }
 
             // Add register to register
-            0x12 => {
+            instructions::ADD_REG_REG => {
                 let register1 = self.fetch()? as usize;
                 let register2 = self.fetch()? as usize;
                 let register_value1 = u16::from_be_bytes([
