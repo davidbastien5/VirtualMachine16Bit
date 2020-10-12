@@ -108,4 +108,10 @@ impl CPU {
 
         Ok(())
     }
+
+    /// Executes the next instruction.
+    pub fn step(&mut self) -> Result<(), String> {
+        let instruction = self.fetch()?;
+        self.execute(instruction)
+    }
 }
