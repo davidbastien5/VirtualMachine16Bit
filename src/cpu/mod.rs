@@ -10,7 +10,6 @@ pub struct CPU {
 }
 
 impl CPU {
-
     /// Creates a new CPU instance with the given memory.
     pub fn new(memory: Box<[u8]>) -> Result<CPU, String> {
         let register_map: HashMap<String, usize> = REGISTER_NAMES
@@ -52,12 +51,61 @@ impl CPU {
         Ok(())
     }
 
-    /// Fetches the next instruction.
+    /// Fetches the next 8-bit instruction and increments the instruction pointer.
     pub fn fetch(&mut self) -> Result<u8, String> {
         let instruction_address = self.get_register("ip")?;
         let instruction = self.memory[instruction_address as usize];
         self.set_register("ip", instruction_address + 1)?;
 
         Ok(instruction)
+    }
+
+    /// Fetches the next 16-bit instruction and increments the instruction pointer.
+    pub fn fetch16(&mut self) -> Result<u16, String> {
+        let instruction_address = self.get_register("ip")?;
+        let bytes: [u8; 2] = [
+            self.memory[instruction_address as usize],
+            self.memory[(instruction_address + 1) as usize],
+        ];
+        let instruction = u16::from_be_bytes(bytes);
+        self.set_register("ip", instruction_address + 2)?;
+
+        Ok(instruction)
+    }
+
+    /// Executes the given instruction.
+    pub fn execute(&mut self, instruction: u8) -> Result<(), String> {
+        match instruction {
+            // Move literal to the r1 register
+            0x10 => {
+                let literal = self.fetch16()?;
+                self.set_register("r1", literal)?;
+            }
+
+            // Move literal to the r2 register
+            0x11 => {
+                let literal = self.fetch16()?;
+                self.set_register("r2", literal)?;
+            }
+
+            // Add register to register
+            0x12 => {
+                let register1 = self.fetch()? as usize;
+                let register2 = self.fetch()? as usize;
+                let register_value1 = u16::from_be_bytes([
+                    self.registers[register1 * 2],
+                    self.registers[register1 * 2 + 1],
+                ]);
+                let register_value2 = u16::from_be_bytes([
+                    self.registers[register2 * 2],
+                    self.registers[register2 * 2 + 1],
+                ]);
+                self.set_register("acc", register_value1 + register_value2)?;
+            }
+
+            _ => return Err(format!("execute: No such instruction '{}'", instruction)),
+        }
+
+        Ok(())
     }
 }
