@@ -1,5 +1,5 @@
 [package]
-name = "VirtualMachine16Bit"
+name = "virtual_machine16_bit"
 version = "0.1.0"
 authors = ["David Bastien <david.bastien5@gmail.com>"]
 edition = "2018"
