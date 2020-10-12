@@ -11,7 +11,7 @@ pub struct CPU {
 
 impl CPU {
     /// Creates a new CPU instance with the given memory.
-    pub fn new(memory: Box<[u8]>) -> Result<CPU, String> {
+    pub fn new(memory: Box<[u8]>) -> CPU {
         let register_map: HashMap<String, usize> = REGISTER_NAMES
             .iter()
             .enumerate()
@@ -20,11 +20,11 @@ impl CPU {
 
         let registers = memory::create_memory(REGISTER_NAMES.len() * 2);
 
-        Ok(CPU {
+        CPU {
             memory,
             register_map,
             registers,
-        })
+        }
     }
 
     /// Gets the value in the given register.
