@@ -36,4 +36,16 @@ impl CPU {
         let bytes: [u8; 2] = [self.registers[*index], self.registers[*index + 1]];
         Ok(u16::from_be_bytes(bytes))
     }
+
+    pub fn set_register(&mut self, name: &str, value: u16) -> Result<(), String> {
+        let index = self
+            .register_map
+            .get(name)
+            .ok_or(format!("set_register: No such register '{}'", name))?;
+
+        let bytes = value.to_be_bytes();
+        self.registers[*index] = bytes[0];
+        self.registers[*index + 1] = bytes[1];
+        Ok(())
+    }
 }
