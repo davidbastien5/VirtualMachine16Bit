@@ -76,16 +76,45 @@ impl CPU {
     /// Executes the given instruction.
     pub fn execute(&mut self, instruction: u8) -> Result<(), String> {
         match instruction {
-            // Move literal to the r1 register
-            instructions::MOV_LIT_R1 => {
-                let literal = self.fetch16()?;
-                self.set_register("r1", literal)?;
+            // Move literal into register
+            instructions::MOV_LIT_REG => {
+                let literal = self.fetch16()?.to_be_bytes();
+                let register = self.fetch()? as usize % REGISTER_NAMES.len() * 2;
+                self.registers[register] = literal[0];
+                self.registers[register + 1] = literal[1];
             }
 
-            // Move literal to the r2 register
-            instructions::MOV_LIT_R2 => {
-                let literal = self.fetch16()?;
-                self.set_register("r2", literal)?;
+            // Move register to register
+            instructions::MOV_REG_REG => {
+                let register_from = self.fetch()? as usize % REGISTER_NAMES.len() * 2;
+                let register_to = self.fetch()? as usize % REGISTER_NAMES.len() * 2;
+                let value = [
+                    self.registers[register_from],
+                    self.registers[register_from + 1],
+                ];
+                self.registers[register_to] = value[0];
+                self.registers[register_to + 1] = value[1];
+            }
+
+            // Move register to memory
+            instructions::MOV_REG_MEM => {
+                let register_from = self.fetch()? as usize % REGISTER_NAMES.len() * 2;
+                let address = self.fetch16()? as usize;
+                let value = [
+                    self.registers[register_from],
+                    self.registers[register_from + 1],
+                ];
+                self.memory[address] = value[0];
+                self.memory[address + 1] = value[1];
+            }
+
+            // Move memory to register
+            instructions::MOV_MEM_REG => {
+                let address = self.fetch16()? as usize;
+                let register_to = self.fetch()? as usize % REGISTER_NAMES.len() * 2;
+                let value = [self.memory[address], self.memory[address + 1]];
+                self.registers[register_to] = value[0];
+                self.registers[register_to + 1] = value[1];
             }
 
             // Add register to register
@@ -114,13 +143,32 @@ impl CPU {
         let instruction = self.fetch()?;
         self.execute(instruction)
     }
+
+    /// Prints the memory at the given address.
+    pub fn view_memory_at(&self, address: usize) {
+        let values = format!(
+            "{:#04X} {:#04X} {:#04X} {:#04X} {:#04X} {:#04X} {:#04X} {:#04X}",
+            self.memory[address],
+            self.memory[address + 1],
+            self.memory[address + 2],
+            self.memory[address + 3],
+            self.memory[address + 4],
+            self.memory[address + 5],
+            self.memory[address + 6],
+            self.memory[address + 7],
+        );
+        println!("{:#06X}: {}", address, values);
+    }
 }
 
 impl fmt::Debug for CPU {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CPU")
             .field("ip", &format!("{:#06X}", self.get_register("ip").unwrap()))
-            .field("acc", &format!("{:#06X}", self.get_register("acc").unwrap()))
+            .field(
+                "acc",
+                &format!("{:#06X}", self.get_register("acc").unwrap()),
+            )
             .field("r1", &format!("{:#06X}", self.get_register("r1").unwrap()))
             .field("r2", &format!("{:#06X}", self.get_register("r2").unwrap()))
             .field("r3", &format!("{:#06X}", self.get_register("r3").unwrap()))
