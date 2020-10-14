@@ -84,21 +84,37 @@ impl CPU {
         Ok(instruction)
     }
 
+    /// Fetches the stored register index.
+    pub fn fetch_register_index(&mut self) -> Result<usize, String> {
+        Ok((self.fetch()? as usize % REGISTER_NAMES.len()) * 2)
+    }
+
+    /// Pushes the given value onto the stack and moves the stack pointer.
+    pub fn push(&mut self, value: u16) -> Result<(), String> {
+        let value = value.to_be_bytes();
+        let address = self.get_register("sp")?;
+        self.memory[address as usize] = value[0];
+        self.memory[(address + 1) as usize] = value[1];
+        self.set_register("sp", address - 2)?;
+
+        Ok(())
+    }
+
     /// Executes the given instruction.
     pub fn execute(&mut self, instruction: u8) -> Result<(), String> {
         match instruction {
             // Move literal into register
             instructions::MOV_LIT_REG => {
                 let literal = self.fetch16()?.to_be_bytes();
-                let register = self.fetch()? as usize % REGISTER_NAMES.len() * 2;
+                let register = self.fetch_register_index()?;
                 self.registers[register] = literal[0];
                 self.registers[register + 1] = literal[1];
             }
 
             // Move register to register
             instructions::MOV_REG_REG => {
-                let register_from = self.fetch()? as usize % REGISTER_NAMES.len() * 2;
-                let register_to = self.fetch()? as usize % REGISTER_NAMES.len() * 2;
+                let register_from = self.fetch_register_index()?;
+                let register_to = self.fetch_register_index()?;
                 let value = [
                     self.registers[register_from],
                     self.registers[register_from + 1],
@@ -109,7 +125,7 @@ impl CPU {
 
             // Move register to memory
             instructions::MOV_REG_MEM => {
-                let register_from = self.fetch()? as usize % REGISTER_NAMES.len() * 2;
+                let register_from = self.fetch_register_index()?;
                 let address = self.fetch16()? as usize;
                 let value = [
                     self.registers[register_from],
@@ -122,7 +138,7 @@ impl CPU {
             // Move memory to register
             instructions::MOV_MEM_REG => {
                 let address = self.fetch16()? as usize;
-                let register_to = self.fetch()? as usize % REGISTER_NAMES.len() * 2;
+                let register_to = self.fetch_register_index()?;
                 let value = [self.memory[address], self.memory[address + 1]];
                 self.registers[register_to] = value[0];
                 self.registers[register_to + 1] = value[1];
@@ -130,8 +146,8 @@ impl CPU {
 
             // Add register to register
             instructions::ADD_REG_REG => {
-                let register1 = self.fetch()? as usize;
-                let register2 = self.fetch()? as usize;
+                let register1 = self.fetch_register_index()?;
+                let register2 = self.fetch_register_index()?;
                 let register_value1 = u16::from_be_bytes([
                     self.registers[register1 * 2],
                     self.registers[register1 * 2 + 1],
@@ -151,6 +167,20 @@ impl CPU {
                 if literal != self.get_register("acc")? {
                     self.set_register("ip", address)?;
                 }
+            }
+
+            // Push literal
+            instructions::PSH_LIT => {
+                let literal = self.fetch16()?;
+                self.push(literal)?;
+            }
+
+            // Push register
+            instructions::PSH_REG => {
+                let register = self.fetch_register_index()?;
+                let value =
+                    u16::from_be_bytes([self.registers[register], self.registers[register + 1]]);
+                self.push(value)?;
             }
 
             _ => {
