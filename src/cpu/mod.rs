@@ -132,6 +132,16 @@ impl CPU {
                 self.set_register("acc", register_value1 + register_value2)?;
             }
 
+            // Jump if not equal
+            instructions::JMP_NOT_EQ => {
+                let literal = self.fetch16()?;
+                let address = self.fetch16()?;
+
+                if literal != self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
             _ => return Err(format!("execute: No such instruction '{}'", instruction)),
         }
 
