@@ -100,6 +100,16 @@ impl CPU {
         Ok(())
     }
 
+    /// Moves the stack pointer and returns the value at that memory location.
+    pub fn pop(&mut self) -> Result<u16, String> {
+        let next_sp_address = self.get_register("sp")? + 2;
+        self.set_register("sp", next_sp_address)?;
+        Ok(u16::from_be_bytes([
+            self.memory[next_sp_address as usize],
+            self.memory[(next_sp_address + 1) as usize],
+        ]))
+    }
+
     /// Executes the given instruction.
     pub fn execute(&mut self, instruction: u8) -> Result<(), String> {
         match instruction {
@@ -181,6 +191,14 @@ impl CPU {
                 let value =
                     u16::from_be_bytes([self.registers[register], self.registers[register + 1]]);
                 self.push(value)?;
+            }
+
+            // Pop
+            instructions::POP => {
+                let register = self.fetch_register_index()?;
+                let value = self.pop()?.to_be_bytes();
+                self.registers[register] = value[0];
+                self.registers[register + 1] = value[1];
             }
 
             _ => {
