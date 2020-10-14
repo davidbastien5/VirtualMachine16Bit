@@ -1,7 +1,9 @@
 use crate::{instructions, memory};
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, convert::TryFrom, fmt};
 
-const REGISTER_NAMES: [&str; 10] = ["ip", "acc", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"];
+const REGISTER_NAMES: [&str; 12] = [
+    "ip", "acc", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "sp", "fp",
+];
 
 pub struct CPU {
     memory: Box<[u8]>,
@@ -11,7 +13,7 @@ pub struct CPU {
 
 impl CPU {
     /// Creates a new CPU instance with the given memory.
-    pub fn new(memory: Box<[u8]>) -> CPU {
+    pub fn new(memory: Box<[u8]>) -> Result<CPU, String> {
         let register_map: HashMap<String, usize> = REGISTER_NAMES
             .iter()
             .enumerate()
@@ -20,11 +22,20 @@ impl CPU {
 
         let registers = memory::create_memory(REGISTER_NAMES.len() * 2);
 
-        CPU {
+        let memory_len = memory.len();
+
+        let mut cpu = CPU {
             memory,
             register_map,
             registers,
-        }
+        };
+
+        let last_memory_address =
+            u16::try_from(memory_len - 1).map_err(|_| "new: Memory length is more than 16-bits")?;
+        cpu.set_register("sp", last_memory_address - 1)?;
+        cpu.set_register("fp", last_memory_address - 1)?;
+
+        Ok(cpu)
     }
 
     /// Gets the value in the given register.
@@ -144,7 +155,7 @@ impl CPU {
 
             _ => {
                 // Do nothing
-            },
+            }
         }
 
         Ok(())
@@ -189,6 +200,8 @@ impl fmt::Debug for CPU {
             .field("r6", &format!("{:#06X}", self.get_register("r6").unwrap()))
             .field("r7", &format!("{:#06X}", self.get_register("r7").unwrap()))
             .field("r8", &format!("{:#06X}", self.get_register("r8").unwrap()))
+            .field("sp", &format!("{:#06X}", self.get_register("sp").unwrap()))
+            .field("fp", &format!("{:#06X}", self.get_register("fp").unwrap()))
             .finish()
     }
 }

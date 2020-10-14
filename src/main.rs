@@ -44,7 +44,7 @@ fn run() -> Result<(), String> {
     memory[18] = 0x00; // 0x0000
     memory[19] = 0x00;
 
-    let mut cpu = CPU::new(memory);
+    let mut cpu = CPU::new(memory)?;
 
     println!("{:#?}", cpu);
     cpu.view_memory_at(cpu.get_register("ip")? as usize);
