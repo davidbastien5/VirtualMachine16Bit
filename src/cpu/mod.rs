@@ -142,7 +142,9 @@ impl CPU {
                 }
             }
 
-            _ => return Err(format!("execute: No such instruction '{}'", instruction)),
+            _ => {
+                // Do nothing
+            },
         }
 
         Ok(())
