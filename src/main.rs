@@ -1,4 +1,4 @@
-use std::{io, process};
+use std::{convert::TryFrom, io, process};
 use virtual_machine16_bit::{cpu::CPU, instructions, memory};
 
 fn main() {
@@ -27,33 +27,74 @@ fn run() -> Result<(), String> {
 
     let mut memory = memory::create_memory(256 * 256);
 
-    memory[0] = instructions::MOV_LIT_REG;
-    memory[1] = 0x51; // 0x5151
-    memory[2] = 0x51;
-    memory[3] = R1;
+    let subroutine_address: usize = 0x3000;
 
-    memory[4] = instructions::MOV_LIT_REG;
-    memory[5] = 0x42; // 0x4242
-    memory[6] = 0x42;
-    memory[7] = R2;
+    memory[0] = instructions::PSH_LIT;
+    memory[1] = 0x33;
+    memory[2] = 0x33;
 
-    memory[8] = instructions::PSH_REG;
-    memory[9] = R1;
+    memory[3] = instructions::PSH_LIT;
+    memory[4] = 0x22;
+    memory[5] = 0x22;
 
-    memory[10] = instructions::PSH_REG;
-    memory[11] = R2;
+    memory[6] = instructions::PSH_LIT;
+    memory[7] = 0x11;
+    memory[8] = 0x11;
 
-    memory[12] = instructions::POP;
-    memory[13] = R1;
+    memory[9] = instructions::MOV_LIT_REG;
+    memory[10] = 0x12;
+    memory[11] = 0x34;
+    memory[12] = R1;
 
-    memory[14] = instructions::POP;
-    memory[15] = R2;
+    memory[13] = instructions::MOV_LIT_REG;
+    memory[14] = 0x56;
+    memory[15] = 0x78;
+    memory[16] = R4;
+
+    memory[17] = instructions::PSH_LIT;
+    memory[18] = 0x00;
+    memory[19] = 0x00;
+
+    memory[20] = instructions::CAL_LIT;
+    memory[21] = u8::try_from((subroutine_address & 0xff00) >> 8)
+        .map_err(|_| "run: Failed to convert usize to u8")?;
+    memory[22] = u8::try_from(subroutine_address & 0x00ff)
+        .map_err(|_| "run: Failed to convert usize to u8")?;
+
+    memory[23] = instructions::PSH_LIT;
+    memory[24] = 0x44;
+    memory[25] = 0x44;
+
+    // Subroutine
+    memory[subroutine_address] = instructions::PSH_LIT;
+    memory[subroutine_address + 1] = 0x01;
+    memory[subroutine_address + 2] = 0x02;
+
+    memory[subroutine_address + 3] = instructions::PSH_LIT;
+    memory[subroutine_address + 4] = 0x03;
+    memory[subroutine_address + 5] = 0x04;
+
+    memory[subroutine_address + 6] = instructions::PSH_LIT;
+    memory[subroutine_address + 7] = 0x05;
+    memory[subroutine_address + 8] = 0x06;
+
+    memory[subroutine_address + 9] = instructions::MOV_LIT_REG;
+    memory[subroutine_address + 10] = 0x07;
+    memory[subroutine_address + 11] = 0x08;
+    memory[subroutine_address + 12] = R1;
+
+    memory[subroutine_address + 13] = instructions::MOV_LIT_REG;
+    memory[subroutine_address + 14] = 0x09;
+    memory[subroutine_address + 15] = 0x0A;
+    memory[subroutine_address + 16] = R8;
+
+    memory[subroutine_address + 17] = instructions::RET;
 
     let mut cpu = CPU::new(memory)?;
 
     println!("{:#?}", cpu);
-    cpu.view_memory_at(cpu.get_register("ip")? as usize);
-    cpu.view_memory_at(0xFFF8);
+    cpu.view_memory_at(cpu.get_register("ip")? as usize, None);
+    cpu.view_memory_at(0xFFFF - 1 - 42, Some(44));
 
     loop {
         let mut input = String::new();
@@ -68,8 +109,8 @@ fn run() -> Result<(), String> {
 
         cpu.step()?;
         println!("{:#?}", cpu);
-        cpu.view_memory_at(cpu.get_register("ip")? as usize);
-        cpu.view_memory_at(0xFFF8);
+        cpu.view_memory_at(cpu.get_register("ip")? as usize, None);
+        cpu.view_memory_at(0xFFFF - 1 - 42, Some(44));
     }
 
     Ok(())

@@ -9,6 +9,7 @@ pub struct CPU {
     memory: Box<[u8]>,
     register_map: HashMap<String, usize>,
     registers: Box<[u8]>,
+    stack_frame_size: u16,
 }
 
 impl CPU {
@@ -28,6 +29,7 @@ impl CPU {
             memory,
             register_map,
             registers,
+            stack_frame_size: 0,
         };
 
         let last_memory_address =
@@ -96,6 +98,7 @@ impl CPU {
         self.memory[address as usize] = value[0];
         self.memory[(address + 1) as usize] = value[1];
         self.set_register("sp", address - 2)?;
+        self.stack_frame_size += 2;
 
         Ok(())
     }
@@ -104,10 +107,67 @@ impl CPU {
     pub fn pop(&mut self) -> Result<u16, String> {
         let next_sp_address = self.get_register("sp")? + 2;
         self.set_register("sp", next_sp_address)?;
+        self.stack_frame_size -= 2;
         Ok(u16::from_be_bytes([
             self.memory[next_sp_address as usize],
             self.memory[(next_sp_address + 1) as usize],
         ]))
+    }
+
+    /// Pushes the current CPU state to the stack and moves the frame pointer.
+    pub fn push_state(&mut self) -> Result<(), String> {
+        self.push(self.get_register("r1")?)?;
+        self.push(self.get_register("r2")?)?;
+        self.push(self.get_register("r3")?)?;
+        self.push(self.get_register("r4")?)?;
+        self.push(self.get_register("r5")?)?;
+        self.push(self.get_register("r6")?)?;
+        self.push(self.get_register("r7")?)?;
+        self.push(self.get_register("r8")?)?;
+        self.push(self.get_register("ip")?)?;
+        self.push(self.stack_frame_size + 2)?;
+
+        self.set_register("fp", self.get_register("sp")?)?;
+        self.stack_frame_size = 0;
+
+        Ok(())
+    }
+
+    /// Pops the CPU state from the stack and restores the CPU state.
+    pub fn pop_state(&mut self) -> Result<(), String> {
+        let frame_pointer_address = self.get_register("fp")?;
+        self.set_register("sp", frame_pointer_address)?;
+
+        self.stack_frame_size = self.pop()?;
+        let stack_frame_size = self.stack_frame_size;
+
+        let value = self.pop()?;
+        self.set_register("ip", value)?;
+        let value = self.pop()?;
+        self.set_register("r8", value)?;
+        let value = self.pop()?;
+        self.set_register("r7", value)?;
+        let value = self.pop()?;
+        self.set_register("r6", value)?;
+        let value = self.pop()?;
+        self.set_register("r5", value)?;
+        let value = self.pop()?;
+        self.set_register("r4", value)?;
+        let value = self.pop()?;
+        self.set_register("r3", value)?;
+        let value = self.pop()?;
+        self.set_register("r2", value)?;
+        let value = self.pop()?;
+        self.set_register("r1", value)?;
+
+        let args_length = self.pop()?;
+        for _ in 0..args_length {
+            self.pop()?;
+        }
+
+        self.set_register("fp", frame_pointer_address + stack_frame_size)?;
+
+        Ok(())
     }
 
     /// Executes the given instruction.
@@ -201,6 +261,27 @@ impl CPU {
                 self.registers[register + 1] = value[1];
             }
 
+            // Call literal
+            instructions::CAL_LIT => {
+                let address = self.fetch16()?;
+                self.push_state()?;
+                self.set_register("ip", address)?;
+            }
+
+            // Call register
+            instructions::CAL_REG => {
+                let register = self.fetch_register_index()?;
+                let address =
+                    u16::from_be_bytes([self.registers[register], self.registers[register + 1]]);
+                self.push_state()?;
+                self.set_register("ip", address)?;
+            }
+
+            // Return from subroutine
+            instructions::RET => {
+                self.pop_state()?;
+            }
+
             _ => {
                 // Do nothing
             }
@@ -216,18 +297,13 @@ impl CPU {
     }
 
     /// Prints the memory at the given address.
-    pub fn view_memory_at(&self, address: usize) {
-        let values = format!(
-            "{:#04X} {:#04X} {:#04X} {:#04X} {:#04X} {:#04X} {:#04X} {:#04X}",
-            self.memory[address],
-            self.memory[address + 1],
-            self.memory[address + 2],
-            self.memory[address + 3],
-            self.memory[address + 4],
-            self.memory[address + 5],
-            self.memory[address + 6],
-            self.memory[address + 7],
-        );
+    pub fn view_memory_at(&self, address: usize, num_bytes: Option<usize>) {
+        let num_bytes = num_bytes.unwrap_or(8);
+        let mut values = format!("{:#04X}", self.memory[address]);
+        for i in 1..num_bytes {
+            values.push_str(&format!(" {:#04X}", self.memory[address + i]));
+        }
+        
         println!("{:#06X}: {}", address, values);
     }
 }
