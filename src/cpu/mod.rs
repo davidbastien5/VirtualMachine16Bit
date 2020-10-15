@@ -23,8 +23,6 @@ impl CPU {
 
         let registers = memory::create_memory(REGISTER_NAMES.len() * 2);
 
-        let memory_len = memory.len();
-
         let mut cpu = CPU {
             memory,
             register_map,
@@ -32,10 +30,8 @@ impl CPU {
             stack_frame_size: 0,
         };
 
-        let last_memory_address =
-            u16::try_from(memory_len - 1).map_err(|_| "new: Memory length is more than 16-bits")?;
-        cpu.set_register("sp", last_memory_address - 1)?;
-        cpu.set_register("fp", last_memory_address - 1)?;
+        cpu.set_register("sp", 0xffff - 1)?;
+        cpu.set_register("fp", 0xffff - 1)?;
 
         Ok(cpu)
     }
@@ -219,12 +215,12 @@ impl CPU {
                 let register1 = self.fetch_register_index()?;
                 let register2 = self.fetch_register_index()?;
                 let register_value1 = u16::from_be_bytes([
-                    self.registers[register1 * 2],
-                    self.registers[register1 * 2 + 1],
+                    self.registers[register1],
+                    self.registers[register1 + 1],
                 ]);
                 let register_value2 = u16::from_be_bytes([
-                    self.registers[register2 * 2],
-                    self.registers[register2 * 2 + 1],
+                    self.registers[register2],
+                    self.registers[register2 + 1],
                 ]);
                 self.set_register("acc", register_value1 + register_value2)?;
             }
