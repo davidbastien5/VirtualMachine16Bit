@@ -1,4 +1,4 @@
-use crate::{device::Device, instructions, memory::Memory};
+use crate::{device::Device, instructions, memory::Memory, memory_mapper::MemoryMapper};
 use std::{collections::HashMap, fmt};
 
 const REGISTER_NAMES: [&str; 12] = [
@@ -6,7 +6,7 @@ const REGISTER_NAMES: [&str; 12] = [
 ];
 
 pub struct CPU {
-    memory: Memory,
+    memory: MemoryMapper,
     register_map: HashMap<String, usize>,
     registers: Memory,
     stack_frame_size: u16,
@@ -14,7 +14,7 @@ pub struct CPU {
 
 impl CPU {
     /// Creates a new CPU instance with the given memory.
-    pub fn new(memory: Memory) -> Result<CPU, String> {
+    pub fn new(memory: MemoryMapper) -> Result<CPU, String> {
         let register_map: HashMap<String, usize> = REGISTER_NAMES
             .iter()
             .enumerate()
@@ -53,8 +53,7 @@ impl CPU {
             .get(name)
             .ok_or(format!("set_register: No such register '{}'", name))?;
 
-        self.registers.set_u16(*index, value);
-        Ok(())
+        self.registers.set_u16(*index, value)
     }
 
     /// Fetches the next 8-bit instruction and increments the instruction pointer.
@@ -279,7 +278,7 @@ impl CPU {
     }
 
     /// Prints the memory at the given address.
-    pub fn view_memory_at(&self, address: usize, num_bytes: Option<usize>) {
+    pub fn view_memory_at(&mut self, address: usize, num_bytes: Option<usize>) {
         let num_bytes = num_bytes.unwrap_or(8);
         let mut values = format!("{:#04X}", self.memory.get_u8(address).unwrap_or_default());
         for i in 1..num_bytes {

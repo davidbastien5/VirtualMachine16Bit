@@ -2,8 +2,8 @@ use crate::device::Device;
 
 struct Region {
     device: Box<dyn Device>,
-    start: u16,
-    end: u16,
+    start: usize,
+    end: usize,
     remap: bool,
 }
 
@@ -19,7 +19,7 @@ impl MemoryMapper {
     }
 
     /// Adds the given mapping to the list of regions.
-    pub fn map(&mut self, device: Box<dyn Device>, start: u16, end: u16, remap: bool) {
+    pub fn map(&mut self, device: Box<dyn Device>, start: usize, end: usize, remap: bool) {
         let region = Region {
             device,
             start,
@@ -31,7 +31,7 @@ impl MemoryMapper {
     }
 
     /// Finds the corresponding region for the given address.
-    fn find_region(&mut self, address: u16) -> Result<&mut Region, String> {
+    fn find_region(&mut self, address: usize) -> Result<&mut Region, String> {
         let region = self
             .regions
             .iter_mut()
@@ -41,7 +41,7 @@ impl MemoryMapper {
     }
 
     /// Returns the u16 value at the given address.
-    pub fn get_u16(&mut self, address: u16) -> Result<u16, String> {
+    pub fn get_u16(&mut self, address: usize) -> Result<u16, String> {
         let region = self.find_region(address)?;
         let address = if region.remap {
             address - region.start
@@ -49,11 +49,11 @@ impl MemoryMapper {
             address
         };
 
-        region.device.get_u16(address as usize)
+        region.device.get_u16(address)
     }
 
     /// Returns the u8 value at the given address.
-    pub fn get_u8(&mut self, address: u16) -> Result<u8, String> {
+    pub fn get_u8(&mut self, address: usize) -> Result<u8, String> {
         let region = self.find_region(address)?;
         let address = if region.remap {
             address - region.start
@@ -61,11 +61,11 @@ impl MemoryMapper {
             address
         };
 
-        region.device.get_u8(address as usize)
+        region.device.get_u8(address)
     }
 
     /// Sets the given u16 value at the given address.
-    pub fn set_u16(&mut self, address: u16, value: u16) -> Result<(), String> {
+    pub fn set_u16(&mut self, address: usize, value: u16) -> Result<(), String> {
         let region = self.find_region(address)?;
         let address = if region.remap {
             address - region.start
@@ -73,11 +73,11 @@ impl MemoryMapper {
             address
         };
 
-        region.device.set_u16(address as usize, value)
+        region.device.set_u16(address, value)
     }
 
     /// Sets the given u16 value at the given address.
-    pub fn set_u8(&mut self, address: u16, value: u8) -> Result<(), String> {
+    pub fn set_u8(&mut self, address: usize, value: u8) -> Result<(), String> {
         let region = self.find_region(address)?;
         let address = if region.remap {
             address - region.start
@@ -85,6 +85,6 @@ impl MemoryMapper {
             address
         };
 
-        region.device.set_u8(address as usize, value)
+        region.device.set_u8(address, value)
     }
 }

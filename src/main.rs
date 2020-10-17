@@ -1,5 +1,8 @@
-use std::{convert::TryFrom, io, process};
-use virtual_machine16_bit::{cpu::CPU, device::Device, instructions, memory::Memory};
+use std::{convert::TryFrom, process};
+use virtual_machine16_bit::{
+    cpu::CPU, device::Device, instructions, memory::Memory, memory_mapper::MemoryMapper,
+    screen_device::ScreenDevice,
+};
 
 fn main() {
     process::exit(match run() {
@@ -25,81 +28,42 @@ fn run() -> Result<(), String> {
     const SP: u8 = 10;
     const FP: u8 = 11;
 
+    let mut memory_mapper = MemoryMapper::new();
+
     let mut memory = Memory::new(256 * 256);
 
-    let subroutine_address: usize = 0x3000;
+    let mut index = 0;
+    let mut write_char_to_screen = |character: char, command: u8, position: u16| {
+        memory.set_u8(index, instructions::MOV_LIT_REG).unwrap();
+        index = index + 1;
+        memory.set_u8(index, command).unwrap();
+        index = index + 1;
+        memory.set_u8(index, character as u8).unwrap();
+        index = index + 1;
+        memory.set_u8(index, R1).unwrap();
+        index = index + 1;
 
-    memory.set_u8(0, instructions::PSH_LIT)?;
-    memory.set_u16(1, 0x3333)?;
+        memory.set_u8(index, instructions::MOV_REG_MEM).unwrap();
+        index = index + 1;
+        memory.set_u8(index, R1).unwrap();
+        index = index + 1;
+        memory.set_u16(index, 0x3000 + position).unwrap();
+        index = index + 2;
+    };
 
-    memory.set_u8(3, instructions::PSH_LIT)?;
-    memory.set_u16(4, 0x2222)?;
+    write_char_to_screen(' ', 0xFF, 0);
 
-    memory.set_u8(6, instructions::PSH_LIT)?;
-    memory.set_u16(7, 0x1111)?;
-
-    memory.set_u8(9, instructions::MOV_LIT_REG)?;
-    memory.set_u16(10, 0x1234)?;
-    memory.set_u8(12, R1)?;
-
-    memory.set_u8(13, instructions::MOV_LIT_REG)?;
-    memory.set_u16(14, 0x5678)?;
-    memory.set_u8(16, R4)?;
-
-    memory.set_u8(17, instructions::PSH_LIT)?;
-    memory.set_u16(18, 0x0000)?;
-
-    memory.set_u8(20, instructions::CAL_LIT)?;
-    memory.set_u16(
-        21,
-        u16::try_from(subroutine_address).map_err(|_| "run: Failed to convert usize to u8")?,
-    )?;
-
-    memory.set_u8(23, instructions::PSH_LIT)?;
-    memory.set_u16(24, 0x4444)?;
-
-    // Subroutine
-    memory.set_u8(subroutine_address, instructions::PSH_LIT)?;
-    memory.set_u16(subroutine_address + 1, 0x0102)?;
-
-    memory.set_u8(subroutine_address + 3, instructions::PSH_LIT)?;
-    memory.set_u16(subroutine_address + 4, 0x0304)?;
-
-    memory.set_u8(subroutine_address + 6, instructions::PSH_LIT)?;
-    memory.set_u16(subroutine_address + 7, 0x0506)?;
-
-    memory.set_u8(subroutine_address + 9, instructions::MOV_LIT_REG)?;
-    memory.set_u16(subroutine_address + 10, 0x0708)?;
-    memory.set_u8(subroutine_address + 12, R1)?;
-
-    memory.set_u8(subroutine_address + 13, instructions::MOV_LIT_REG)?;
-    memory.set_u16(subroutine_address + 14, 0x090A)?;
-    memory.set_u8(subroutine_address + 16, R8)?;
-
-    memory.set_u8(subroutine_address + 17, instructions::RET)?;
-
-    let mut cpu = CPU::new(memory)?;
-
-    println!("{:#?}", cpu);
-    cpu.view_memory_at(cpu.get_register("ip")? as usize, None);
-    cpu.view_memory_at(0xFFFF - 1 - 42, Some(44));
-
-    loop {
-        let mut input = String::new();
-
-        io::stdin()
-            .read_line(&mut input)
-            .expect("Failed to read line");
-
-        if input.trim() == "q" {
-            break;
-        }
-
-        cpu.step()?;
-        println!("{:#?}", cpu);
-        cpu.view_memory_at(cpu.get_register("ip")? as usize, None);
-        cpu.view_memory_at(0xFFFF - 1 - 42, Some(44));
+    for i in 0u16..=0xFF {
+        let command: u8 = if i % 2 == 0 { 0x01 } else { 0x02 };
+        write_char_to_screen('*', command, i);
     }
+
+    memory.set_u8(index, instructions::HLT)?;
+    memory_mapper.map(Box::new(memory), 0, 0xFFFF, false);
+    memory_mapper.map(Box::new(ScreenDevice), 0x3000, 0x30FF, true);
+
+    let mut cpu = CPU::new(memory_mapper)?;
+    cpu.run()?;
 
     Ok(())
 }
