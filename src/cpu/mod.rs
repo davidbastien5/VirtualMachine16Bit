@@ -1,5 +1,5 @@
 use crate::{instructions, memory};
-use std::{collections::HashMap, convert::TryFrom, fmt};
+use std::{collections::HashMap, fmt};
 
 const REGISTER_NAMES: [&str; 12] = [
     "ip", "acc", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "sp", "fp",
@@ -166,8 +166,8 @@ impl CPU {
         Ok(())
     }
 
-    /// Executes the given instruction.
-    pub fn execute(&mut self, instruction: u8) -> Result<(), String> {
+    /// Executes the given instruction. Returns true if the CPU should halt.
+    pub fn execute(&mut self, instruction: u8) -> Result<bool, String> {
         match instruction {
             // Move literal into register
             instructions::MOV_LIT_REG => {
@@ -278,18 +278,34 @@ impl CPU {
                 self.pop_state()?;
             }
 
+            // Halt all computation
+            instructions::HLT => {
+                return Ok(true);
+            }
+
             _ => {
                 // Do nothing
             }
         }
 
-        Ok(())
+        Ok(false)
     }
 
     /// Executes the next instruction.
-    pub fn step(&mut self) -> Result<(), String> {
+    pub fn step(&mut self) -> Result<bool, String> {
         let instruction = self.fetch()?;
         self.execute(instruction)
+    }
+
+    /// Runs the CPU
+    pub fn run(&mut self) -> Result<(), String> {
+        loop {
+            let halt = self.step()?;
+            if halt {
+                break;
+            }
+        }
+        Ok(())
     }
 
     /// Prints the memory at the given address.

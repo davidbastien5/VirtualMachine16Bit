@@ -1,5 +1,5 @@
 use std::{convert::TryFrom, io, process};
-use virtual_machine16_bit::{cpu::CPU, instructions, memory};
+use virtual_machine16_bit::{cpu::CPU, instructions, memory, memory_mapper};
 
 fn main() {
     process::exit(match run() {
@@ -24,6 +24,7 @@ fn run() -> Result<(), String> {
     const R8: u8 = 9;
     const SP: u8 = 10;
     const FP: u8 = 11;
+
 
     let mut memory = memory::create_memory(256 * 256);
 
