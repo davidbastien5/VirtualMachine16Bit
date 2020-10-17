@@ -1,5 +1,7 @@
+use crate::device::Device;
+
 struct Region {
-    device: Box<[u8]>,
+    device: Box<dyn Device>,
     start: u16,
     end: u16,
     remap: bool,
@@ -17,7 +19,7 @@ impl MemoryMapper {
     }
 
     /// Adds the given mapping to the list of regions.
-    pub fn map(&mut self, device: Box<[u8]>, start: u16, end: u16, remap: bool) {
+    pub fn map(&mut self, device: Box<dyn Device>, start: u16, end: u16, remap: bool) {
         let region = Region {
             device,
             start,
@@ -47,10 +49,7 @@ impl MemoryMapper {
             address
         };
 
-        Ok(u16::from_be_bytes([
-            region.device[address as usize],
-            region.device[(address + 1) as usize],
-        ]))
+        region.device.get_u16(address as usize)
     }
 
     /// Returns the u8 value at the given address.
@@ -62,7 +61,7 @@ impl MemoryMapper {
             address
         };
 
-        Ok(region.device[address as usize])
+        region.device.get_u8(address as usize)
     }
 
     /// Sets the given u16 value at the given address.
@@ -74,11 +73,7 @@ impl MemoryMapper {
             address
         };
 
-        let value = value.to_be_bytes();
-        region.device[address as usize] = value[0];
-        region.device[(address + 1) as usize] = value[1];
-
-        Ok(())
+        region.device.set_u16(address as usize, value)
     }
 
     /// Sets the given u16 value at the given address.
@@ -90,9 +85,6 @@ impl MemoryMapper {
             address
         };
 
-        let value = value.to_be_bytes();
-        region.device[address as usize] = value[0];
-
-        Ok(())
+        region.device.set_u8(address as usize, value)
     }
 }
