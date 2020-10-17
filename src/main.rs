@@ -1,5 +1,5 @@
 use std::{convert::TryFrom, io, process};
-use virtual_machine16_bit::{cpu::CPU, instructions, memory, memory_mapper};
+use virtual_machine16_bit::{cpu::CPU, device::Device, instructions, memory::Memory};
 
 fn main() {
     process::exit(match run() {
@@ -25,71 +25,58 @@ fn run() -> Result<(), String> {
     const SP: u8 = 10;
     const FP: u8 = 11;
 
-
-    let mut memory = memory::create_memory(256 * 256);
+    let mut memory = Memory::new(256 * 256);
 
     let subroutine_address: usize = 0x3000;
 
-    memory[0] = instructions::PSH_LIT;
-    memory[1] = 0x33;
-    memory[2] = 0x33;
+    memory.set_u8(0, instructions::PSH_LIT)?;
+    memory.set_u16(1, 0x3333)?;
 
-    memory[3] = instructions::PSH_LIT;
-    memory[4] = 0x22;
-    memory[5] = 0x22;
+    memory.set_u8(3, instructions::PSH_LIT)?;
+    memory.set_u16(4, 0x2222)?;
 
-    memory[6] = instructions::PSH_LIT;
-    memory[7] = 0x11;
-    memory[8] = 0x11;
+    memory.set_u8(6, instructions::PSH_LIT)?;
+    memory.set_u16(7, 0x1111)?;
 
-    memory[9] = instructions::MOV_LIT_REG;
-    memory[10] = 0x12;
-    memory[11] = 0x34;
-    memory[12] = R1;
+    memory.set_u8(9, instructions::MOV_LIT_REG)?;
+    memory.set_u16(10, 0x1234)?;
+    memory.set_u8(12, R1)?;
 
-    memory[13] = instructions::MOV_LIT_REG;
-    memory[14] = 0x56;
-    memory[15] = 0x78;
-    memory[16] = R4;
+    memory.set_u8(13, instructions::MOV_LIT_REG)?;
+    memory.set_u16(14, 0x5678)?;
+    memory.set_u8(16, R4)?;
 
-    memory[17] = instructions::PSH_LIT;
-    memory[18] = 0x00;
-    memory[19] = 0x00;
+    memory.set_u8(17, instructions::PSH_LIT)?;
+    memory.set_u16(18, 0x0000)?;
 
-    memory[20] = instructions::CAL_LIT;
-    memory[21] = u8::try_from((subroutine_address & 0xff00) >> 8)
-        .map_err(|_| "run: Failed to convert usize to u8")?;
-    memory[22] = u8::try_from(subroutine_address & 0x00ff)
-        .map_err(|_| "run: Failed to convert usize to u8")?;
+    memory.set_u8(20, instructions::CAL_LIT)?;
+    memory.set_u16(
+        21,
+        u16::try_from(subroutine_address).map_err(|_| "run: Failed to convert usize to u8")?,
+    )?;
 
-    memory[23] = instructions::PSH_LIT;
-    memory[24] = 0x44;
-    memory[25] = 0x44;
+    memory.set_u8(23, instructions::PSH_LIT)?;
+    memory.set_u16(24, 0x4444)?;
 
     // Subroutine
-    memory[subroutine_address] = instructions::PSH_LIT;
-    memory[subroutine_address + 1] = 0x01;
-    memory[subroutine_address + 2] = 0x02;
+    memory.set_u8(subroutine_address, instructions::PSH_LIT)?;
+    memory.set_u16(subroutine_address + 1, 0x0102)?;
 
-    memory[subroutine_address + 3] = instructions::PSH_LIT;
-    memory[subroutine_address + 4] = 0x03;
-    memory[subroutine_address + 5] = 0x04;
+    memory.set_u8(subroutine_address + 3, instructions::PSH_LIT)?;
+    memory.set_u16(subroutine_address + 4, 0x0304)?;
 
-    memory[subroutine_address + 6] = instructions::PSH_LIT;
-    memory[subroutine_address + 7] = 0x05;
-    memory[subroutine_address + 8] = 0x06;
+    memory.set_u8(subroutine_address + 6, instructions::PSH_LIT)?;
+    memory.set_u16(subroutine_address + 7, 0x0506)?;
 
-    memory[subroutine_address + 9] = instructions::MOV_LIT_REG;
-    memory[subroutine_address + 10] = 0x07;
-    memory[subroutine_address + 11] = 0x08;
-    memory[subroutine_address + 12] = R1;
+    memory.set_u8(subroutine_address + 9, instructions::MOV_LIT_REG)?;
+    memory.set_u16(subroutine_address + 10, 0x0708)?;
+    memory.set_u8(subroutine_address + 12, R1)?;
 
-    memory[subroutine_address + 13] = instructions::MOV_LIT_REG;
-    memory[subroutine_address + 14] = 0x09;
-    memory[subroutine_address + 15] = 0x0A;
-    memory[subroutine_address + 16] = R8;
+    memory.set_u8(subroutine_address + 13, instructions::MOV_LIT_REG)?;
+    memory.set_u16(subroutine_address + 14, 0x090A)?;
+    memory.set_u8(subroutine_address + 16, R8)?;
 
-    memory[subroutine_address + 17] = instructions::RET;
+    memory.set_u8(subroutine_address + 17, instructions::RET)?;
 
     let mut cpu = CPU::new(memory)?;
 
