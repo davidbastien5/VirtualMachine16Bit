@@ -1,4 +1,4 @@
-use crate::device::Device;
+use crate::virtual_machine::device::Device;
 use std::{
     convert::TryInto,
     io::{self, Write},

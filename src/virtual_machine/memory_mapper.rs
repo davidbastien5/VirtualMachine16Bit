@@ -1,4 +1,4 @@
-use crate::device::Device;
+use crate::virtual_machine::device::Device;
 
 struct Region {
     device: Box<dyn Device>,

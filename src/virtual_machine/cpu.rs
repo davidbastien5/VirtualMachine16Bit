@@ -1,4 +1,6 @@
-use crate::{device::Device, instructions, memory::Memory, memory_mapper::MemoryMapper};
+use crate::virtual_machine::{
+    device::Device, instructions, memory::Memory, memory_mapper::MemoryMapper,
+};
 use std::{collections::HashMap, fmt};
 
 const REGISTER_NAMES: [&str; 12] = [

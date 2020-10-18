@@ -1,13 +1,13 @@
-use crate::device::Device;
+use crate::virtual_machine::device::Device;
 
 pub struct Memory {
-    memory: Box<[u8]>
+    memory: Box<[u8]>,
 }
 
 impl Memory {
     pub fn new(size: usize) -> Memory {
         Memory {
-            memory: vec![0; size].into_boxed_slice()
+            memory: vec![0; size].into_boxed_slice(),
         }
     }
 }
@@ -16,7 +16,7 @@ impl Device for Memory {
     fn get_u16(&self, address: usize) -> Result<u16, String> {
         Ok(u16::from_be_bytes([
             self.memory[address],
-            self.memory[address + 1]
+            self.memory[address + 1],
         ]))
     }
 

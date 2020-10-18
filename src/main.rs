@@ -1,5 +1,5 @@
-use std::{convert::TryFrom, process};
-use virtual_machine16_bit::{
+use std::process;
+use virtual_machine16_bit::virtual_machine::{
     cpu::CPU, device::Device, instructions, memory::Memory, memory_mapper::MemoryMapper,
     screen_device::ScreenDevice,
 };
