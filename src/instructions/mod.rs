@@ -16,6 +16,18 @@ pub const DEC_REG: u8         = 0x36;
 pub const MUL_LIT_REG: u8     = 0x20;
 pub const MUL_REG_REG: u8     = 0x21;
 
+pub const LSF_REG_LIT: u8     = 0x26;
+pub const LSF_REG_REG: u8     = 0x27;
+pub const RSF_REG_LIT: u8     = 0x2A;
+pub const RSF_REG_REG: u8     = 0x2B;
+pub const AND_REG_LIT: u8     = 0x2E;
+pub const AND_REG_REG: u8     = 0x2F;
+pub const OR_REG_LIT: u8      = 0x30;
+pub const OR_REG_REG: u8      = 0x31;
+pub const XOR_REG_LIT: u8     = 0x32;
+pub const XOR_REG_REG: u8     = 0x33;
+pub const NOT: u8             = 0x34;
+
 pub const JMP_NOT_EQ: u8      = 0x15;
 pub const PSH_LIT: u8         = 0x17;
 pub const PSH_REG: u8         = 0x18;

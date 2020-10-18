@@ -288,6 +288,102 @@ impl CPU {
                 self.registers.set_u16(register, register_value - 1)?;
             }
 
+            // Left shift register by literal (in place)
+            instructions::LSF_REG_LIT => {
+                let register = self.fetch_register_index()?;
+                let literal = self.fetch()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.registers
+                    .set_u16(register, register_value << literal)?;
+            }
+
+            // Left shift register by register (in place)
+            instructions::LSF_REG_REG => {
+                let register1 = self.fetch_register_index()?;
+                let register2 = self.fetch_register_index()?;
+                let register_value1 = self.registers.get_u16(register1)?;
+                let register_value2 = self.registers.get_u16(register2)?;
+                self.registers
+                    .set_u16(register1, register_value1 << register_value2)?;
+            }
+
+            // Right shift register by literal (in place)
+            instructions::RSF_REG_LIT => {
+                let register = self.fetch_register_index()?;
+                let literal = self.fetch()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.registers
+                    .set_u16(register, register_value >> literal)?;
+            }
+
+            // Right shift register by register (in place)
+            instructions::RSF_REG_REG => {
+                let register1 = self.fetch_register_index()?;
+                let register2 = self.fetch_register_index()?;
+                let register_value1 = self.registers.get_u16(register1)?;
+                let register_value2 = self.registers.get_u16(register2)?;
+                self.registers
+                    .set_u16(register1, register_value1 >> register_value2)?;
+            }
+
+            // And register with literal
+            instructions::AND_REG_LIT => {
+                let register = self.fetch_register_index()?;
+                let literal = self.fetch16()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.set_register("acc", register_value & literal)?;
+            }
+
+            // And register with register
+            instructions::AND_REG_REG => {
+                let register1 = self.fetch_register_index()?;
+                let register2 = self.fetch_register_index()?;
+                let register_value1 = self.registers.get_u16(register1)?;
+                let register_value2 = self.registers.get_u16(register2)?;
+                self.set_register("acc", register_value1 & register_value2)?;
+            }
+
+            // Or register with literal
+            instructions::OR_REG_LIT => {
+                let register = self.fetch_register_index()?;
+                let literal = self.fetch16()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.set_register("acc", register_value | literal)?;
+            }
+
+            // Or register with register
+            instructions::OR_REG_REG => {
+                let register1 = self.fetch_register_index()?;
+                let register2 = self.fetch_register_index()?;
+                let register_value1 = self.registers.get_u16(register1)?;
+                let register_value2 = self.registers.get_u16(register2)?;
+                self.set_register("acc", register_value1 | register_value2)?;
+            }
+
+            // Xor register with literal
+            instructions::XOR_REG_LIT => {
+                let register = self.fetch_register_index()?;
+                let literal = self.fetch16()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.set_register("acc", register_value ^ literal)?;
+            }
+
+            // Xor register with register
+            instructions::XOR_REG_REG => {
+                let register1 = self.fetch_register_index()?;
+                let register2 = self.fetch_register_index()?;
+                let register_value1 = self.registers.get_u16(register1)?;
+                let register_value2 = self.registers.get_u16(register2)?;
+                self.set_register("acc", register_value1 ^ register_value2)?;
+            }
+
+            // Not (invert) register
+            instructions::NOT => {
+                let register = self.fetch_register_index()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.set_register("acc", !register_value)?;
+            }
+
             // Jump if not equal
             instructions::JMP_NOT_EQ => {
                 let literal = self.fetch16()?;
@@ -373,9 +469,11 @@ impl CPU {
         let num_bytes = num_bytes.unwrap_or(8);
         let mut values = format!("{:#04X}", self.memory.get_u8(address).unwrap_or_default());
         for i in 1..num_bytes {
-            values.push_str(&format!(" {:#04X}", self.memory.get_u8(address + i).unwrap_or_default()));
+            values.push_str(&format!(
+                " {:#04X}",
+                self.memory.get_u8(address + i).unwrap_or_default()
+            ));
         }
-        
         println!("{:#06X}: {}", address, values);
     }
 }
