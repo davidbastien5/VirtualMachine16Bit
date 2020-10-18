@@ -188,6 +188,33 @@ impl CPU {
                 self.registers.set_u16(register_to, value)?;
             }
 
+            // Move literal to memory
+            instructions::MOV_LIT_MEM => {
+                let value = self.fetch16()?;
+                let address = self.fetch16()? as usize;
+                self.memory.set_u16(address, value)?;
+            }
+
+            // Move register* to register
+            instructions::MOV_REG_PTR_REG => {
+                let register1 = self.fetch_register_index()?;
+                let register2 = self.fetch_register_index()?;
+                let pointer = self.registers.get_u16(register1)? as usize;
+                let value = self.memory.get_u16(pointer)?;
+                self.registers.set_u16(register2, value)?;
+            }
+
+            // Move value at [literal + register] to register
+            instructions::MOV_LIT_OFF_REG => {
+                let base_address = self.fetch16()? as usize;
+                let register1 = self.fetch_register_index()?;
+                let register2 = self.fetch_register_index()?;
+                let offset = self.registers.get_u16(register1)? as usize;
+
+                let value = self.memory.get_u16(base_address + offset)?;
+                self.registers.set_u16(register2, value)?;
+            }
+
             // Add register to register
             instructions::ADD_REG_REG => {
                 let register1 = self.fetch_register_index()?;
