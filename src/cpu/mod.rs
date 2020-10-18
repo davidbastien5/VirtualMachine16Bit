@@ -384,12 +384,128 @@ impl CPU {
                 self.set_register("acc", !register_value)?;
             }
 
-            // Jump if not equal
+            // Jump if literal not equal
             instructions::JMP_NOT_EQ => {
                 let literal = self.fetch16()?;
                 let address = self.fetch16()?;
 
                 if literal != self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if register not equal
+            instructions::JNE_REG => {
+                let register = self.fetch_register_index()?;
+                let address = self.fetch16()?;
+                let register_value = self.registers.get_u16(register)?;
+
+                if register_value != self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if literal equal
+            instructions::JEQ_LIT => {
+                let literal = self.fetch16()?;
+                let address = self.fetch16()?;
+
+                if literal == self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if register equal
+            instructions::JEQ_REG => {
+                let register = self.fetch_register_index()?;
+                let address = self.fetch16()?;
+                let register_value = self.registers.get_u16(register)?;
+
+                if register_value == self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if literal less than
+            instructions::JLT_LIT => {
+                let literal = self.fetch16()?;
+                let address = self.fetch16()?;
+
+                if literal < self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if register less than
+            instructions::JLT_REG => {
+                let register = self.fetch_register_index()?;
+                let address = self.fetch16()?;
+                let register_value = self.registers.get_u16(register)?;
+
+                if register_value < self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if literal greater than
+            instructions::JGT_LIT => {
+                let literal = self.fetch16()?;
+                let address = self.fetch16()?;
+
+                if literal > self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if register greater than
+            instructions::JGT_REG => {
+                let register = self.fetch_register_index()?;
+                let address = self.fetch16()?;
+                let register_value = self.registers.get_u16(register)?;
+
+                if register_value > self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if literal less than or equal to
+            instructions::JLE_LIT => {
+                let literal = self.fetch16()?;
+                let address = self.fetch16()?;
+
+                if literal <= self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if register less than or equal to
+            instructions::JLE_REG => {
+                let register = self.fetch_register_index()?;
+                let address = self.fetch16()?;
+                let register_value = self.registers.get_u16(register)?;
+
+                if register_value <= self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if literal greater than or equal to
+            instructions::JGE_LIT => {
+                let literal = self.fetch16()?;
+                let address = self.fetch16()?;
+
+                if literal >= self.get_register("acc")? {
+                    self.set_register("ip", address)?;
+                }
+            }
+
+            // Jump if register greater than or equal to
+            instructions::JGE_REG => {
+                let register = self.fetch_register_index()?;
+                let address = self.fetch16()?;
+                let register_value = self.registers.get_u16(register)?;
+
+                if register_value >= self.get_register("acc")? {
                     self.set_register("ip", address)?;
                 }
             }

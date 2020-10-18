@@ -29,6 +29,18 @@ pub const XOR_REG_REG: u8     = 0x33;
 pub const NOT: u8             = 0x34;
 
 pub const JMP_NOT_EQ: u8      = 0x15;
+pub const JNE_REG: u8         = 0x40;
+pub const JEQ_REG: u8         = 0x3E;
+pub const JEQ_LIT: u8         = 0x41;
+pub const JLT_REG: u8         = 0x42;
+pub const JLT_LIT: u8         = 0x43;
+pub const JGT_REG: u8         = 0x44;
+pub const JGT_LIT: u8         = 0x45;
+pub const JLE_REG: u8         = 0x46;
+pub const JLE_LIT: u8         = 0x47;
+pub const JGE_REG: u8         = 0x48;
+pub const JGE_LIT: u8         = 0x49;
+
 pub const PSH_LIT: u8         = 0x17;
 pub const PSH_REG: u8         = 0x18;
 pub const POP: u8             = 0x1A;
