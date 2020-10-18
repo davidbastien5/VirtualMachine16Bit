@@ -224,6 +224,70 @@ impl CPU {
                 self.set_register("acc", register_value1 + register_value2)?;
             }
 
+            // Add literal to register
+            instructions::ADD_LIT_REG => {
+                let literal = self.fetch16()?;
+                let register = self.fetch_register_index()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.set_register("acc", literal + register_value)?;
+            }
+
+            // Subtract literal from register
+            instructions::SUB_LIT_REG => {
+                let literal = self.fetch16()?;
+                let register = self.fetch_register_index()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.set_register("acc", register_value - literal)?;
+            }
+
+            // Subtract register from literal
+            instructions::SUB_REG_LIT => {
+                let register = self.fetch_register_index()?;
+                let literal = self.fetch16()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.set_register("acc", literal - register_value)?;
+            }
+
+            // Subtract register from register
+            instructions::SUB_REG_REG => {
+                let register1 = self.fetch_register_index()?;
+                let register2 = self.fetch_register_index()?;
+                let register_value1 = self.registers.get_u16(register1)?;
+                let register_value2 = self.registers.get_u16(register2)?;
+                self.set_register("acc", register_value1 - register_value2)?;
+            }
+
+            // Multiply literal by register
+            instructions::MUL_LIT_REG => {
+                let literal = self.fetch16()?;
+                let register = self.fetch_register_index()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.set_register("acc", literal * register_value)?;
+            }
+
+            // Multiply register by register
+            instructions::MUL_REG_REG => {
+                let register1 = self.fetch_register_index()?;
+                let register2 = self.fetch_register_index()?;
+                let register_value1 = self.registers.get_u16(register1)?;
+                let register_value2 = self.registers.get_u16(register2)?;
+                self.set_register("acc", register_value1 * register_value2)?;
+            }
+
+            // Increment value in register (in place)
+            instructions::INC_REG => {
+                let register = self.fetch_register_index()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.registers.set_u16(register, register_value + 1)?;
+            }
+
+            // Decrement value in register (in place)
+            instructions::DEC_REG => {
+                let register = self.fetch_register_index()?;
+                let register_value = self.registers.get_u16(register)?;
+                self.registers.set_u16(register, register_value - 1)?;
+            }
+
             // Jump if not equal
             instructions::JMP_NOT_EQ => {
                 let literal = self.fetch16()?;
