@@ -1,17 +1,12 @@
+use crate::assembler::ast;
 use nom::{
     branch::alt,
     bytes::complete::tag_no_case,
     character::complete::{char, hex_digit1, space0, space1},
-    combinator::map_res,
+    combinator::{map_res, value},
     sequence::preceded,
     IResult,
 };
-
-#[derive(Debug, PartialEq)]
-struct MovLitReg {
-    literal: u16,
-    register: String,
-}
 
 fn hex_literal(input: &str) -> IResult<&str, u16> {
     preceded(
@@ -20,24 +15,24 @@ fn hex_literal(input: &str) -> IResult<&str, u16> {
     )(input)
 }
 
-fn register(input: &str) -> IResult<&str, &str> {
+fn register(input: &str) -> IResult<&str, ast::Register> {
     alt((
-        tag_no_case("r1"),
-        tag_no_case("r2"),
-        tag_no_case("r3"),
-        tag_no_case("r4"),
-        tag_no_case("r5"),
-        tag_no_case("r6"),
-        tag_no_case("r7"),
-        tag_no_case("r8"),
-        tag_no_case("sp"),
-        tag_no_case("fp"),
-        tag_no_case("ip"),
-        tag_no_case("acc"),
+        value(ast::Register::R1, tag_no_case("r1")),
+        value(ast::Register::R2, tag_no_case("r2")),
+        value(ast::Register::R3, tag_no_case("r3")),
+        value(ast::Register::R4, tag_no_case("r4")),
+        value(ast::Register::R5, tag_no_case("r5")),
+        value(ast::Register::R6, tag_no_case("r6")),
+        value(ast::Register::R7, tag_no_case("r7")),
+        value(ast::Register::R8, tag_no_case("r8")),
+        value(ast::Register::SP, tag_no_case("sp")),
+        value(ast::Register::FP, tag_no_case("fp")),
+        value(ast::Register::IP, tag_no_case("ip")),
+        value(ast::Register::ACC, tag_no_case("acc")),
     ))(input)
 }
 
-fn mov_lit_to_reg(input: &str) -> IResult<&str, MovLitReg> {
+fn mov_lit_to_reg(input: &str) -> IResult<&str, ast::Instruction> {
     let (input, _) = tag_no_case("mov")(input)?;
     let (input, _) = space1(input)?;
     let (input, literal) = hex_literal(input)?;
@@ -49,9 +44,8 @@ fn mov_lit_to_reg(input: &str) -> IResult<&str, MovLitReg> {
 
     Ok((
         input,
-        MovLitReg {
-            literal,
-            register: register.to_string(),
+        ast::Instruction {
+            kind: ast::InstructionKind::MovLitReg(literal, register),
         },
     ))
 }
@@ -73,9 +67,8 @@ mod tests {
             mov_lit_to_reg("mov $1234, R1"),
             Ok((
                 "",
-                MovLitReg {
-                    literal: 0x1234,
-                    register: "R1".to_string()
+                ast::Instruction {
+                    kind: ast::InstructionKind::MovLitReg(0x1234, ast::Register::R1)
                 }
             ))
         );
@@ -83,9 +76,8 @@ mod tests {
             mov_lit_to_reg("mOV $99,acc "),
             Ok((
                 "",
-                MovLitReg {
-                    literal: 0x99,
-                    register: "acc".to_string()
+                ast::Instruction {
+                    kind: ast::InstructionKind::MovLitReg(0x99, ast::Register::ACC)
                 }
             ))
         );
@@ -93,8 +85,8 @@ mod tests {
 
     #[test]
     fn register_test() {
-        assert_eq!(register("R1"), Ok(("", "R1")));
-        assert_eq!(register("r4"), Ok(("", "r4")));
-        assert_eq!(register("aCc"), Ok(("", "aCc")));
+        assert_eq!(register("R1"), Ok(("", ast::Register::R1)));
+        assert_eq!(register("r4"), Ok(("", ast::Register::R4)));
+        assert_eq!(register("aCc"), Ok(("", ast::Register::ACC)));
     }
 }
