@@ -3,8 +3,8 @@ use nom::{
     branch::alt,
     bytes::complete::tag_no_case,
     character::complete::{char, hex_digit1, space0, space1},
-    combinator::{map_res, value},
-    sequence::preceded,
+    combinator::{map, map_res, value},
+    sequence::{delimited, preceded, separated_pair, tuple},
     IResult,
 };
 
@@ -32,22 +32,17 @@ fn register(input: &str) -> IResult<&str, ast::Register> {
     ))(input)
 }
 
-fn mov_lit_to_reg(input: &str) -> IResult<&str, ast::Instruction> {
-    let (input, _) = tag_no_case("mov")(input)?;
-    let (input, _) = space1(input)?;
-    let (input, literal) = hex_literal(input)?;
-    let (input, _) = space0(input)?;
-    let (input, _) = char(',')(input)?;
-    let (input, _) = space0(input)?;
-    let (input, register) = register(input)?;
-    let (input, _) = space0(input)?;
-
-    Ok((
-        input,
-        ast::Instruction {
+fn mov_lit_reg(input: &str) -> IResult<&str, ast::Instruction> {
+    map(
+        delimited(
+            tuple((tag_no_case("mov"), space1)),
+            separated_pair(hex_literal, tuple((space0, char(','), space0)), register),
+            space0
+        ),
+        |(literal, register)| ast::Instruction {
             kind: ast::InstructionKind::MovLitReg(literal, register),
         },
-    ))
+    )(input)
 }
 
 #[cfg(test)]
@@ -64,7 +59,7 @@ mod tests {
     #[test]
     fn mov_lit_to_reg_test() {
         assert_eq!(
-            mov_lit_to_reg("mov $1234, R1"),
+            mov_lit_reg("mov $1234, R1"),
             Ok((
                 "",
                 ast::Instruction {
@@ -73,7 +68,7 @@ mod tests {
             ))
         );
         assert_eq!(
-            mov_lit_to_reg("mOV $99,acc "),
+            mov_lit_reg("mOV $99,acc "),
             Ok((
                 "",
                 ast::Instruction {
