@@ -9,6 +9,13 @@ pub enum InstructionKind {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub enum Operator {
+    OpPlus,
+    OpMinus,
+    OpMultiply
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Register {
     R1,
     R2,
@@ -18,8 +25,8 @@ pub enum Register {
     R6,
     R7,
     R8,
-    SP,
-    FP,
-    IP,
-    ACC,
+    Sp,
+    Fp,
+    Ip,
+    Acc,
 }

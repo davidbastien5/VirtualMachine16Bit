@@ -15,6 +15,27 @@ fn hex_literal(input: &str) -> IResult<&str, u16> {
     )(input)
 }
 
+fn mov_lit_reg(input: &str) -> IResult<&str, ast::Instruction> {
+    map(
+        delimited(
+            tuple((tag_no_case("mov"), space1)),
+            separated_pair(hex_literal, tuple((space0, char(','), space0)), register),
+            space0,
+        ),
+        |(literal, register)| ast::Instruction {
+            kind: ast::InstructionKind::MovLitReg(literal, register),
+        },
+    )(input)
+}
+
+fn operator(input: &str) -> IResult<&str, ast::Operator> {
+    alt((
+        value(ast::Operator::OpPlus, char('+')),
+        value(ast::Operator::OpMinus, char('-')),
+        value(ast::Operator::OpMultiply, char('*')),
+    ))(input)
+}
+
 fn register(input: &str) -> IResult<&str, ast::Register> {
     alt((
         value(ast::Register::R1, tag_no_case("r1")),
@@ -25,24 +46,11 @@ fn register(input: &str) -> IResult<&str, ast::Register> {
         value(ast::Register::R6, tag_no_case("r6")),
         value(ast::Register::R7, tag_no_case("r7")),
         value(ast::Register::R8, tag_no_case("r8")),
-        value(ast::Register::SP, tag_no_case("sp")),
-        value(ast::Register::FP, tag_no_case("fp")),
-        value(ast::Register::IP, tag_no_case("ip")),
-        value(ast::Register::ACC, tag_no_case("acc")),
+        value(ast::Register::Sp, tag_no_case("sp")),
+        value(ast::Register::Fp, tag_no_case("fp")),
+        value(ast::Register::Ip, tag_no_case("ip")),
+        value(ast::Register::Acc, tag_no_case("acc")),
     ))(input)
-}
-
-fn mov_lit_reg(input: &str) -> IResult<&str, ast::Instruction> {
-    map(
-        delimited(
-            tuple((tag_no_case("mov"), space1)),
-            separated_pair(hex_literal, tuple((space0, char(','), space0)), register),
-            space0
-        ),
-        |(literal, register)| ast::Instruction {
-            kind: ast::InstructionKind::MovLitReg(literal, register),
-        },
-    )(input)
 }
 
 #[cfg(test)]
@@ -72,16 +80,23 @@ mod tests {
             Ok((
                 "",
                 ast::Instruction {
-                    kind: ast::InstructionKind::MovLitReg(0x99, ast::Register::ACC)
+                    kind: ast::InstructionKind::MovLitReg(0x99, ast::Register::Acc)
                 }
             ))
         );
     }
 
     #[test]
+    fn operator_test() {
+        assert_eq!(operator("+"), Ok(("", ast::Operator::OpPlus)));
+        assert_eq!(operator("-"), Ok(("", ast::Operator::OpMinus)));
+        assert_eq!(operator("*"), Ok(("", ast::Operator::OpMultiply)));
+    }
+
+    #[test]
     fn register_test() {
         assert_eq!(register("R1"), Ok(("", ast::Register::R1)));
         assert_eq!(register("r4"), Ok(("", ast::Register::R4)));
-        assert_eq!(register("aCc"), Ok(("", ast::Register::ACC)));
+        assert_eq!(register("aCc"), Ok(("", ast::Register::Acc)));
     }
 }
