@@ -16,7 +16,7 @@ fn hex_literal(input: &str) -> IResult<&str, u16> {
     )(input)
 }
 
-fn identifier(input: &str) -> IResult<&str, ast::Identifier> {
+fn identifier(input: &str) -> IResult<&str, String> {
     let one_alpha = map_parser(take(1usize), alpha1);
 
     map(
@@ -31,7 +31,7 @@ fn identifier(input: &str) -> IResult<&str, ast::Identifier> {
                 },
             ),
         ),
-        |(first, second): (&str, String)| ast::Identifier(format!("{}{}", first, second)),
+        |(first, second): (&str, String)| format!("{}{}", first, second),
     )(input)
 }
 
@@ -73,6 +73,12 @@ fn register(input: &str) -> IResult<&str, ast::Register> {
     ))(input)
 }
 
+fn variable(input: &str) -> IResult<&str, ast::Variable> {
+    map(preceded(tag("!"), identifier), |identifier| {
+        ast::Variable(identifier)
+    })(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -87,22 +93,10 @@ mod tests {
 
     #[test]
     fn identifier_test() {
-        assert_eq!(
-            identifier("_"),
-            Ok(("", ast::Identifier(String::from("_"))))
-        );
-        assert_eq!(
-            identifier("d"),
-            Ok(("", ast::Identifier(String::from("d"))))
-        );
-        assert_eq!(
-            identifier("wad1_23"),
-            Ok(("", ast::Identifier(String::from("wad1_23"))))
-        );
-        assert_eq!(
-            identifier("_12fe2_"),
-            Ok(("", ast::Identifier(String::from("_12fe2_"))))
-        );
+        assert_eq!(identifier("_"), Ok(("", String::from("_"))));
+        assert_eq!(identifier("d"), Ok(("", String::from("d"))));
+        assert_eq!(identifier("wad1_23"), Ok(("", String::from("wad1_23"))));
+        assert_eq!(identifier("_12fe2_"), Ok(("", String::from("_12fe2_"))));
         assert_eq!(identifier("9"), Err(Error(("9", ErrorKind::Tag))));
         assert_eq!(identifier(" "), Err(Error((" ", ErrorKind::Tag))));
         assert_eq!(identifier(""), Err(Error(("", ErrorKind::Tag))));
@@ -142,5 +136,22 @@ mod tests {
         assert_eq!(register("R1"), Ok(("", ast::Register::R1)));
         assert_eq!(register("r4"), Ok(("", ast::Register::R4)));
         assert_eq!(register("aCc"), Ok(("", ast::Register::Acc)));
+    }
+
+    #[test]
+    fn variable_test() {
+        assert_eq!(
+            variable("!abc"),
+            Ok(("", ast::Variable(String::from("abc"))))
+        );
+        assert_eq!(variable("!_"), Ok(("", ast::Variable(String::from("_")))));
+        assert_eq!(
+            variable("!ab1_cd2"),
+            Ok(("", ast::Variable(String::from("ab1_cd2"))))
+        );
+        assert_eq!(
+            variable("abc"),
+            Err(Error(("abc", ErrorKind::Tag)))
+        );
     }
 }

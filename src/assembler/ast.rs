@@ -1,7 +1,4 @@
 #[derive(Debug, PartialEq)]
-pub struct Identifier(pub String);
-
-#[derive(Debug, PartialEq)]
 pub struct Instruction {
     pub kind: InstructionKind,
 }
@@ -33,3 +30,6 @@ pub enum Register {
     Ip,
     Acc,
 }
+
+#[derive(Debug, PartialEq)]
+pub struct Variable(pub String);
