@@ -1,4 +1,7 @@
 #[derive(Debug, PartialEq)]
+pub struct Identifier(pub String);
+
+#[derive(Debug, PartialEq)]
 pub struct Instruction {
     pub kind: InstructionKind,
 }

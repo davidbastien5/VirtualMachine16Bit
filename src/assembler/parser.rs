@@ -1,10 +1,11 @@
 use crate::assembler::ast;
 use nom::{
     branch::alt,
-    bytes::complete::tag_no_case,
-    character::complete::{char, hex_digit1, space0, space1},
-    combinator::{map, map_res, value},
-    sequence::{delimited, preceded, separated_pair, tuple},
+    bytes::complete::{tag, tag_no_case, take},
+    character::complete::{alpha1, alphanumeric1, char, hex_digit1, space0, space1},
+    combinator::{map, map_parser, map_res, value},
+    multi::fold_many0,
+    sequence::{delimited, pair, preceded, separated_pair, tuple},
     IResult,
 };
 
@@ -12,6 +13,25 @@ fn hex_literal(input: &str) -> IResult<&str, u16> {
     preceded(
         char('$'),
         map_res(hex_digit1, |input| u16::from_str_radix(input, 16)),
+    )(input)
+}
+
+fn identifier(input: &str) -> IResult<&str, ast::Identifier> {
+    let one_alpha = map_parser(take(1usize), alpha1);
+
+    map(
+        pair(
+            alt((one_alpha, tag("_"))),
+            fold_many0(
+                alt((alphanumeric1, tag("_"))),
+                String::new(),
+                |mut accumulator, item| {
+                    accumulator.push_str(item);
+                    accumulator
+                },
+            ),
+        ),
+        |(first, second): (&str, String)| ast::Identifier(format!("{}{}", first, second)),
     )(input)
 }
 
@@ -56,12 +76,36 @@ fn register(input: &str) -> IResult<&str, ast::Register> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nom::{error::ErrorKind, Err::Error};
 
     #[test]
     fn hex_literal_test() {
         assert_eq!(hex_literal("$1234"), Ok(("", 0x1234)));
         assert_eq!(hex_literal("$0"), Ok(("", 0x00)));
         assert_eq!(hex_literal("$89"), Ok(("", 0x89)));
+    }
+
+    #[test]
+    fn identifier_test() {
+        assert_eq!(
+            identifier("_"),
+            Ok(("", ast::Identifier(String::from("_"))))
+        );
+        assert_eq!(
+            identifier("d"),
+            Ok(("", ast::Identifier(String::from("d"))))
+        );
+        assert_eq!(
+            identifier("wad1_23"),
+            Ok(("", ast::Identifier(String::from("wad1_23"))))
+        );
+        assert_eq!(
+            identifier("_12fe2_"),
+            Ok(("", ast::Identifier(String::from("_12fe2_"))))
+        );
+        assert_eq!(identifier("9"), Err(Error(("9", ErrorKind::Tag))));
+        assert_eq!(identifier(" "), Err(Error((" ", ErrorKind::Tag))));
+        assert_eq!(identifier(""), Err(Error(("", ErrorKind::Tag))));
     }
 
     #[test]
