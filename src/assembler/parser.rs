@@ -81,10 +81,18 @@ fn identifier(input: &str) -> IResult<&str, String> {
 }
 
 fn mov_lit_reg(input: &str) -> IResult<&str, ast::Instruction> {
+    fn element(input: &str) -> IResult<&str, ast::Expr> {
+        alt((square_braket_expr, hex_literal))(input)
+    }
+
+    fn space_delimited_comma(input: &str) -> IResult<&str, char> {
+        delimited(space0, char(','), space0)(input)
+    }
+
     map(
         delimited(
             tuple((tag_no_case("mov"), space1)),
-            separated_pair(hex_literal, tuple((space0, char(','), space0)), register),
+            separated_pair(element, space_delimited_comma, register),
             space0,
         ),
         |(literal, register)| ast::Instruction {
@@ -397,6 +405,30 @@ mod tests {
                     kind: ast::InstructionKind::MovLitReg(
                         ast::Expr {
                             kind: ast::ExprKind::HexLiteral(0x99)
+                        },
+                        ast::Register::Acc
+                    )
+                }
+            ))
+        );
+        assert_eq!(
+            mov_lit_reg("mOV [!a - $4],acc "),
+            Ok((
+                "",
+                ast::Instruction {
+                    kind: ast::InstructionKind::MovLitReg(
+                        ast::Expr {
+                            kind: ast::ExprKind::SquareBracket(Box::new(ast::Expr {
+                                kind: ast::ExprKind::Binary(
+                                    Box::new(ast::Expr {
+                                        kind: ast::ExprKind::Variable(String::from("a"))
+                                    }),
+                                    ast::Operator::OpMinus,
+                                    Box::new(ast::Expr {
+                                        kind: ast::ExprKind::HexLiteral(0x4)
+                                    }),
+                                )
+                            }))
                         },
                         ast::Register::Acc
                     )
