@@ -9,7 +9,7 @@ pub enum ExprKind {
     Bracket(Box<Expr>),
     HexLiteral(u16),
     SquareBracket(Box<Expr>),
-    Variable(Box<Variable>)
+    Variable(String)
 }
 
 #[derive(Debug, PartialEq)]
@@ -44,6 +44,3 @@ pub enum Register {
     Ip,
     Acc,
 }
-
-#[derive(Debug, PartialEq)]
-pub struct Variable(pub String);

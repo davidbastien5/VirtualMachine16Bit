@@ -141,7 +141,7 @@ fn square_braket_expr(input: &str) -> IResult<&str, ast::Expr> {
 
 fn variable(input: &str) -> IResult<&str, ast::Expr> {
     map(preceded(tag("!"), identifier), |identifier| ast::Expr {
-        kind: ast::ExprKind::Variable(Box::new(ast::Variable(identifier))),
+        kind: ast::ExprKind::Variable(identifier),
     })(input)
 }
 
@@ -176,9 +176,7 @@ mod tests {
                 ast::Expr {
                     kind: ast::ExprKind::Binary(
                         Box::new(ast::Expr {
-                            kind: ast::ExprKind::Variable(Box::new(ast::Variable(String::from(
-                                "z"
-                            ))))
+                            kind: ast::ExprKind::Variable(String::from("z"))
                         }),
                         ast::Operator::OpMinus,
                         Box::new(ast::Expr {
@@ -201,9 +199,7 @@ mod tests {
                         Box::new(ast::Expr {
                             kind: ast::ExprKind::Binary(
                                 Box::new(ast::Expr {
-                                    kind: ast::ExprKind::Variable(Box::new(ast::Variable(
-                                        String::from("abc")
-                                    )))
+                                    kind: ast::ExprKind::Variable(String::from("abc"))
                                 }),
                                 ast::Operator::OpPlus,
                                 Box::new(ast::Expr {
@@ -240,9 +236,7 @@ mod tests {
                     kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
                         kind: ast::ExprKind::Binary(
                             Box::new(ast::Expr {
-                                kind: ast::ExprKind::Variable(Box::new(ast::Variable(
-                                    String::from("abc")
-                                )))
+                                kind: ast::ExprKind::Variable(String::from("abc"))
                             }),
                             ast::Operator::OpMinus,
                             Box::new(ast::Expr {
@@ -268,18 +262,14 @@ mod tests {
                                         }),
                                         ast::Operator::OpMultiply,
                                         Box::new(ast::Expr {
-                                            kind: ast::ExprKind::Variable(Box::new(ast::Variable(
-                                                String::from("z")
-                                            )))
+                                            kind: ast::ExprKind::Variable(String::from("z"))
                                         }),
                                     )
                                 }))
                             }),
                             ast::Operator::OpPlus,
                             Box::new(ast::Expr {
-                                kind: ast::ExprKind::Variable(Box::new(ast::Variable(
-                                    String::from("dfg")
-                                )))
+                                kind: ast::ExprKind::Variable(String::from("dfg"))
                             })
                         )
                     }))
@@ -294,9 +284,7 @@ mod tests {
                     kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
                         kind: ast::ExprKind::Binary(
                             Box::new(ast::Expr {
-                                kind: ast::ExprKind::Variable(Box::new(ast::Variable(
-                                    String::from("fg")
-                                )))
+                                kind: ast::ExprKind::Variable(String::from("fg"))
                             }),
                             ast::Operator::OpMinus,
                             Box::new(ast::Expr {
@@ -314,17 +302,13 @@ mod tests {
                                                             kind: ast::ExprKind::Binary(
                                                                 Box::new(ast::Expr {
                                                                     kind: ast::ExprKind::Variable(
-                                                                        Box::new(ast::Variable(
-                                                                            String::from("a")
-                                                                        ))
+                                                                        String::from("a")
                                                                     )
                                                                 }),
                                                                 ast::Operator::OpMinus,
                                                                 Box::new(ast::Expr {
                                                                     kind: ast::ExprKind::Variable(
-                                                                        Box::new(ast::Variable(
-                                                                            String::from("b")
-                                                                        ))
+                                                                        String::from("b")
                                                                     )
                                                                 })
                                                             )
@@ -464,9 +448,7 @@ mod tests {
                     kind: ast::ExprKind::SquareBracket(Box::new(ast::Expr {
                         kind: ast::ExprKind::Binary(
                             Box::new(ast::Expr {
-                                kind: ast::ExprKind::Variable(Box::new(ast::Variable(
-                                    String::from("abc")
-                                )))
+                                kind: ast::ExprKind::Variable(String::from("abc"))
                             }),
                             ast::Operator::OpMinus,
                             Box::new(ast::Expr {
@@ -491,9 +473,7 @@ mod tests {
                             Box::new(ast::Expr {
                                 kind: ast::ExprKind::Binary(
                                     Box::new(ast::Expr {
-                                        kind: ast::ExprKind::Variable(Box::new(ast::Variable(
-                                            String::from("zyx")
-                                        )))
+                                        kind: ast::ExprKind::Variable(String::from("zyx"))
                                     }),
                                     ast::Operator::OpPlus,
                                     Box::new(ast::Expr {
@@ -514,9 +494,7 @@ mod tests {
                     kind: ast::ExprKind::SquareBracket(Box::new(ast::Expr {
                         kind: ast::ExprKind::Binary(
                             Box::new(ast::Expr {
-                                kind: ast::ExprKind::Variable(Box::new(ast::Variable(
-                                    String::from("a")
-                                )))
+                                kind: ast::ExprKind::Variable(String::from("a"))
                             }),
                             ast::Operator::OpPlus,
                             Box::new(ast::Expr {
@@ -558,7 +536,7 @@ mod tests {
             Ok((
                 "",
                 ast::Expr {
-                    kind: ast::ExprKind::Variable(Box::new(ast::Variable(String::from("abc"))))
+                    kind: ast::ExprKind::Variable(String::from("abc"))
                 }
             ))
         );
@@ -567,7 +545,7 @@ mod tests {
             Ok((
                 "",
                 ast::Expr {
-                    kind: ast::ExprKind::Variable(Box::new(ast::Variable(String::from("_"))))
+                    kind: ast::ExprKind::Variable(String::from("_"))
                 }
             ))
         );
@@ -576,7 +554,7 @@ mod tests {
             Ok((
                 "",
                 ast::Expr {
-                    kind: ast::ExprKind::Variable(Box::new(ast::Variable(String::from("ab1_cd2"))))
+                    kind: ast::ExprKind::Variable(String::from("ab1_cd2"))
                 }
             ))
         );
