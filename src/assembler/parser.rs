@@ -10,11 +10,30 @@ use nom::{
 };
 use std::num::ParseIntError;
 
-// fn bracketed_expr(input: &str) -> IResult<&str, ast::Expr> {}
+fn bracketed_expr(input: &str) -> IResult<&str, ast::Expr> {
+    fn element(input: &str) -> IResult<&str, ast::Expr> {
+        alt((bracketed_expr, hex_literal, variable))(input)
+    }
+
+    fn operator_separated(input: &str) -> IResult<&str, ast::Expr> {
+        alt((binary, element))(input)
+    }
+
+    map(
+        delimited(
+            tuple((char('('), space0)),
+            operator_separated,
+            tuple((space0, char(')'))),
+        ),
+        |expression| ast::Expr {
+            kind: ast::ExprKind::Bracket(Box::new(expression)),
+        },
+    )(input)
+}
 
 fn binary(input: &str) -> IResult<&str, ast::Expr> {
     fn element(input: &str) -> IResult<&str, ast::Expr> {
-        alt((/*bracketed_expr,*/ hex_literal, variable))(input)
+        alt((bracketed_expr, hex_literal, variable))(input)
     }
 
     fn space_delimited_operator(input: &str) -> IResult<&str, ast::Operator> {
@@ -101,7 +120,7 @@ fn register(input: &str) -> IResult<&str, ast::Register> {
 
 fn square_braket_expr(input: &str) -> IResult<&str, ast::Expr> {
     fn element(input: &str) -> IResult<&str, ast::Expr> {
-        alt((/*bracketed_expr,*/ hex_literal, variable))(input)
+        alt((bracketed_expr, hex_literal, variable))(input)
     }
 
     fn operator_separated(input: &str) -> IResult<&str, ast::Expr> {
@@ -196,14 +215,136 @@ mod tests {
                 }
             ))
         );
+        assert_eq!(binary("!a"), Err(Error(("", ErrorKind::Char))));
+        assert_eq!(binary("$01+-!cd"), Err(Error(("-!cd", ErrorKind::Tag))));
+    }
+
+    #[test]
+    fn bracketed_expr_test() {
         assert_eq!(
-            binary("!a"),
-            Err(Error(("", ErrorKind::Char)))
+            bracketed_expr("($01)"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
+                        kind: ast::ExprKind::HexLiteral(0x01)
+                    }))
+                }
+            ))
         );
         assert_eq!(
-            binary("$01+-!cd"),
-            Err(Error(("-!cd", ErrorKind::Tag)))
+            bracketed_expr("( !abc- $5678 )"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
+                        kind: ast::ExprKind::Binary(
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::Variable(Box::new(ast::Variable(
+                                    String::from("abc")
+                                )))
+                            }),
+                            ast::Operator::OpMinus,
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::HexLiteral(0x5678)
+                            })
+                        )
+                    }))
+                }
+            ))
         );
+        assert_eq!(
+            bracketed_expr("( ($10 *!z ) +!dfg )"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
+                        kind: ast::ExprKind::Binary(
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
+                                    kind: ast::ExprKind::Binary(
+                                        Box::new(ast::Expr {
+                                            kind: ast::ExprKind::HexLiteral(0x10)
+                                        }),
+                                        ast::Operator::OpMultiply,
+                                        Box::new(ast::Expr {
+                                            kind: ast::ExprKind::Variable(Box::new(ast::Variable(
+                                                String::from("z")
+                                            )))
+                                        }),
+                                    )
+                                }))
+                            }),
+                            ast::Operator::OpPlus,
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::Variable(Box::new(ast::Variable(
+                                    String::from("dfg")
+                                )))
+                            })
+                        )
+                    }))
+                }
+            ))
+        );
+        assert_eq!(
+            bracketed_expr("(  !fg - ( $8 *(!a-!b) ) + $5)"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
+                        kind: ast::ExprKind::Binary(
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::Variable(Box::new(ast::Variable(
+                                    String::from("fg")
+                                )))
+                            }),
+                            ast::Operator::OpMinus,
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::Binary(
+                                    Box::new(ast::Expr {
+                                        kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
+                                            kind: ast::ExprKind::Binary(
+                                                Box::new(ast::Expr {
+                                                    kind: ast::ExprKind::HexLiteral(0x8)
+                                                }),
+                                                ast::Operator::OpMultiply,
+                                                Box::new(ast::Expr {
+                                                    kind: ast::ExprKind::Bracket(Box::new(
+                                                        ast::Expr {
+                                                            kind: ast::ExprKind::Binary(
+                                                                Box::new(ast::Expr {
+                                                                    kind: ast::ExprKind::Variable(
+                                                                        Box::new(ast::Variable(
+                                                                            String::from("a")
+                                                                        ))
+                                                                    )
+                                                                }),
+                                                                ast::Operator::OpMinus,
+                                                                Box::new(ast::Expr {
+                                                                    kind: ast::ExprKind::Variable(
+                                                                        Box::new(ast::Variable(
+                                                                            String::from("b")
+                                                                        ))
+                                                                    )
+                                                                })
+                                                            )
+                                                        }
+                                                    ))
+                                                })
+                                            )
+                                        }))
+                                    }),
+                                    ast::Operator::OpPlus,
+                                    Box::new(ast::Expr {
+                                        kind: ast::ExprKind::HexLiteral(0x5)
+                                    })
+                                )
+                            })
+                        )
+                    }))
+                }
+            ))
+        )
     }
 
     #[test]
