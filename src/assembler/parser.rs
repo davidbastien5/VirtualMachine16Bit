@@ -507,6 +507,37 @@ mod tests {
             ))
         );
         assert_eq!(
+            square_braket_expr("[!a + ($2 * $3)]"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::SquareBracket(Box::new(ast::Expr {
+                        kind: ast::ExprKind::Binary(
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::Variable(Box::new(ast::Variable(
+                                    String::from("a")
+                                )))
+                            }),
+                            ast::Operator::OpPlus,
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
+                                    kind: ast::ExprKind::Binary(
+                                        Box::new(ast::Expr {
+                                            kind: ast::ExprKind::HexLiteral(0x2)
+                                        }),
+                                        ast::Operator::OpMultiply,
+                                        Box::new(ast::Expr {
+                                            kind: ast::ExprKind::HexLiteral(0x3)
+                                        }),
+                                    )
+                                }))
+                            }),
+                        )
+                    }))
+                }
+            ))
+        );
+        assert_eq!(
             square_braket_expr("[*$01]"),
             Err(Error(("*$01]", ErrorKind::Tag)))
         );
