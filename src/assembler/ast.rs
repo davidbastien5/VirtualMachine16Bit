@@ -1,11 +1,25 @@
 #[derive(Debug, PartialEq)]
+pub struct Expr {
+    pub kind: ExprKind
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ExprKind {
+    Binary(Box<Expr>, Operator, Box<Expr>),
+    Bracket(Box<Expr>),
+    HexLiteral(u16),
+    SquareBracket(Box<Expr>),
+    Variable(Box<Variable>)
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Instruction {
     pub kind: InstructionKind,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum InstructionKind {
-    MovLitReg(u16, Register),
+    MovLitReg(Expr, Register),
 }
 
 #[derive(Clone, Debug, PartialEq)]

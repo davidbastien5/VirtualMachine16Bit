@@ -8,11 +8,20 @@ use nom::{
     sequence::{delimited, pair, preceded, separated_pair, tuple},
     IResult,
 };
+use std::num::ParseIntError;
 
-fn hex_literal(input: &str) -> IResult<&str, u16> {
+// fn bracketed_expr(input: &str) -> IResult<&str, ast::Expr> {}
+
+fn hex_literal(input: &str) -> IResult<&str, ast::Expr> {
     preceded(
         char('$'),
-        map_res(hex_digit1, |input| u16::from_str_radix(input, 16)),
+        map_res(hex_digit1, |input| -> Result<ast::Expr, ParseIntError> {
+            let hex_lit = u16::from_str_radix(input, 16)?;
+
+            Ok(ast::Expr {
+                kind: ast::ExprKind::HexLiteral(hex_lit),
+            })
+        }),
     )(input)
 }
 
@@ -73,9 +82,43 @@ fn register(input: &str) -> IResult<&str, ast::Register> {
     ))(input)
 }
 
-fn variable(input: &str) -> IResult<&str, ast::Variable> {
-    map(preceded(tag("!"), identifier), |identifier| {
-        ast::Variable(identifier)
+fn square_braket_expr(input: &str) -> IResult<&str, ast::Expr> {
+    fn element(input: &str) -> IResult<&str, ast::Expr> {
+        alt((/*bracketed_expr,*/ hex_literal, variable))(input)
+    }
+
+    fn space_delimited_operator(input: &str) -> IResult<&str, ast::Operator> {
+        delimited(space0, operator, space0)(input)
+    }
+
+    fn binary(input: &str) -> IResult<&str, ast::Expr> {
+        map(
+            tuple((element, space_delimited_operator, alt((binary, element)))),
+            |(expression1, operator, expression2)| ast::Expr {
+                kind: ast::ExprKind::Binary(Box::new(expression1), operator, Box::new(expression2)),
+            },
+        )(input)
+    }
+
+    fn operator_separated(input: &str) -> IResult<&str, ast::Expr> {
+        alt((binary, element))(input)
+    }
+
+    map(
+        delimited(
+            tuple((char('['), space0)),
+            operator_separated,
+            tuple((space0, char(']'))),
+        ),
+        |expression| ast::Expr {
+            kind: ast::ExprKind::SquareBracket(Box::new(expression)),
+        },
+    )(input)
+}
+
+fn variable(input: &str) -> IResult<&str, ast::Expr> {
+    map(preceded(tag("!"), identifier), |identifier| ast::Expr {
+        kind: ast::ExprKind::Variable(Box::new(ast::Variable(identifier))),
     })(input)
 }
 
@@ -86,9 +129,33 @@ mod tests {
 
     #[test]
     fn hex_literal_test() {
-        assert_eq!(hex_literal("$1234"), Ok(("", 0x1234)));
-        assert_eq!(hex_literal("$0"), Ok(("", 0x00)));
-        assert_eq!(hex_literal("$89"), Ok(("", 0x89)));
+        assert_eq!(
+            hex_literal("$1234"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::HexLiteral(0x1234)
+                }
+            ))
+        );
+        assert_eq!(
+            hex_literal("$0"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::HexLiteral(0x00)
+                }
+            ))
+        );
+        assert_eq!(
+            hex_literal("$89"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::HexLiteral(0x89)
+                }
+            ))
+        );
     }
 
     #[test]
@@ -109,7 +176,12 @@ mod tests {
             Ok((
                 "",
                 ast::Instruction {
-                    kind: ast::InstructionKind::MovLitReg(0x1234, ast::Register::R1)
+                    kind: ast::InstructionKind::MovLitReg(
+                        ast::Expr {
+                            kind: ast::ExprKind::HexLiteral(0x1234)
+                        },
+                        ast::Register::R1
+                    )
                 }
             ))
         );
@@ -118,7 +190,12 @@ mod tests {
             Ok((
                 "",
                 ast::Instruction {
-                    kind: ast::InstructionKind::MovLitReg(0x99, ast::Register::Acc)
+                    kind: ast::InstructionKind::MovLitReg(
+                        ast::Expr {
+                            kind: ast::ExprKind::HexLiteral(0x99)
+                        },
+                        ast::Register::Acc
+                    )
                 }
             ))
         );
@@ -139,19 +216,119 @@ mod tests {
     }
 
     #[test]
+    fn square_braket_expr_test() {
+        assert_eq!(
+            square_braket_expr("[ $01+ $02]"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::SquareBracket(Box::new(ast::Expr {
+                        kind: ast::ExprKind::Binary(
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::HexLiteral(0x01)
+                            }),
+                            ast::Operator::OpPlus,
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::HexLiteral(0x02)
+                            })
+                        )
+                    }))
+                }
+            ))
+        );
+        assert_eq!(
+            square_braket_expr("[ !abc-$1234 ]"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::SquareBracket(Box::new(ast::Expr {
+                        kind: ast::ExprKind::Binary(
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::Variable(Box::new(ast::Variable(
+                                    String::from("abc")
+                                )))
+                            }),
+                            ast::Operator::OpMinus,
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::HexLiteral(0x1234)
+                            })
+                        )
+                    }))
+                }
+            ))
+        );
+        assert_eq!(
+            square_braket_expr("[$9876*!zyx + $43 ]"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::SquareBracket(Box::new(ast::Expr {
+                        kind: ast::ExprKind::Binary(
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::HexLiteral(0x9876)
+                            }),
+                            ast::Operator::OpMultiply,
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::Binary(
+                                    Box::new(ast::Expr {
+                                        kind: ast::ExprKind::Variable(Box::new(ast::Variable(
+                                            String::from("zyx")
+                                        )))
+                                    }),
+                                    ast::Operator::OpPlus,
+                                    Box::new(ast::Expr {
+                                        kind: ast::ExprKind::HexLiteral(0x43)
+                                    })
+                                )
+                            })
+                        )
+                    }))
+                }
+            ))
+        );
+        assert_eq!(
+            square_braket_expr("[*$01]"),
+            Err(Error(("*$01]", ErrorKind::Tag)))
+        );
+        assert_eq!(
+            square_braket_expr("[!ab +$02- ]"),
+            Err(Error(("- ]", ErrorKind::Char)))
+        );
+        assert_eq!(
+            square_braket_expr("[ $01+-!cd]"),
+            Err(Error(("+-!cd]", ErrorKind::Char)))
+        );
+    }
+
+    #[test]
     fn variable_test() {
         assert_eq!(
             variable("!abc"),
-            Ok(("", ast::Variable(String::from("abc"))))
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Variable(Box::new(ast::Variable(String::from("abc"))))
+                }
+            ))
         );
-        assert_eq!(variable("!_"), Ok(("", ast::Variable(String::from("_")))));
+        assert_eq!(
+            variable("!_"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Variable(Box::new(ast::Variable(String::from("_"))))
+                }
+            ))
+        );
         assert_eq!(
             variable("!ab1_cd2"),
-            Ok(("", ast::Variable(String::from("ab1_cd2"))))
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Variable(Box::new(ast::Variable(String::from("ab1_cd2"))))
+                }
+            ))
         );
-        assert_eq!(
-            variable("abc"),
-            Err(Error(("abc", ErrorKind::Tag)))
-        );
+        assert_eq!(variable("abc"), Err(Error(("abc", ErrorKind::Tag))));
     }
 }
