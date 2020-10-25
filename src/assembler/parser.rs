@@ -12,6 +12,23 @@ use std::num::ParseIntError;
 
 // fn bracketed_expr(input: &str) -> IResult<&str, ast::Expr> {}
 
+fn binary(input: &str) -> IResult<&str, ast::Expr> {
+    fn element(input: &str) -> IResult<&str, ast::Expr> {
+        alt((/*bracketed_expr,*/ hex_literal, variable))(input)
+    }
+
+    fn space_delimited_operator(input: &str) -> IResult<&str, ast::Operator> {
+        delimited(space0, operator, space0)(input)
+    }
+
+    map(
+        tuple((element, space_delimited_operator, alt((binary, element)))),
+        |(expression1, operator, expression2)| ast::Expr {
+            kind: ast::ExprKind::Binary(Box::new(expression1), operator, Box::new(expression2)),
+        },
+    )(input)
+}
+
 fn hex_literal(input: &str) -> IResult<&str, ast::Expr> {
     preceded(
         char('$'),
@@ -87,19 +104,6 @@ fn square_braket_expr(input: &str) -> IResult<&str, ast::Expr> {
         alt((/*bracketed_expr,*/ hex_literal, variable))(input)
     }
 
-    fn space_delimited_operator(input: &str) -> IResult<&str, ast::Operator> {
-        delimited(space0, operator, space0)(input)
-    }
-
-    fn binary(input: &str) -> IResult<&str, ast::Expr> {
-        map(
-            tuple((element, space_delimited_operator, alt((binary, element)))),
-            |(expression1, operator, expression2)| ast::Expr {
-                kind: ast::ExprKind::Binary(Box::new(expression1), operator, Box::new(expression2)),
-            },
-        )(input)
-    }
-
     fn operator_separated(input: &str) -> IResult<&str, ast::Expr> {
         alt((binary, element))(input)
     }
@@ -126,6 +130,81 @@ fn variable(input: &str) -> IResult<&str, ast::Expr> {
 mod tests {
     use super::*;
     use nom::{error::ErrorKind, Err::Error};
+
+    #[test]
+    fn binary_test() {
+        assert_eq!(
+            binary("$12+ $34"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Binary(
+                        Box::new(ast::Expr {
+                            kind: ast::ExprKind::HexLiteral(0x12)
+                        }),
+                        ast::Operator::OpPlus,
+                        Box::new(ast::Expr {
+                            kind: ast::ExprKind::HexLiteral(0x34)
+                        })
+                    )
+                }
+            ))
+        );
+        assert_eq!(
+            binary("!z-$0123"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Binary(
+                        Box::new(ast::Expr {
+                            kind: ast::ExprKind::Variable(Box::new(ast::Variable(String::from(
+                                "z"
+                            ))))
+                        }),
+                        ast::Operator::OpMinus,
+                        Box::new(ast::Expr {
+                            kind: ast::ExprKind::HexLiteral(0x0123)
+                        })
+                    )
+                }
+            ))
+        );
+        assert_eq!(
+            binary("$1234*!abc + $23"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Binary(
+                        Box::new(ast::Expr {
+                            kind: ast::ExprKind::HexLiteral(0x1234)
+                        }),
+                        ast::Operator::OpMultiply,
+                        Box::new(ast::Expr {
+                            kind: ast::ExprKind::Binary(
+                                Box::new(ast::Expr {
+                                    kind: ast::ExprKind::Variable(Box::new(ast::Variable(
+                                        String::from("abc")
+                                    )))
+                                }),
+                                ast::Operator::OpPlus,
+                                Box::new(ast::Expr {
+                                    kind: ast::ExprKind::HexLiteral(0x23)
+                                })
+                            )
+                        })
+                    )
+                }
+            ))
+        );
+        assert_eq!(
+            binary("!a"),
+            Err(Error(("", ErrorKind::Char)))
+        );
+        assert_eq!(
+            binary("$01+-!cd"),
+            Err(Error(("-!cd", ErrorKind::Tag)))
+        );
+    }
 
     #[test]
     fn hex_literal_test() {
