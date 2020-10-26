@@ -3,7 +3,7 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take},
     character::complete::{alpha1, alphanumeric1, char, hex_digit1, space0, space1},
-    combinator::{map, map_parser, map_res, value},
+    combinator::{map, map_parser, map_res, opt, value},
     multi::fold_many0,
     sequence::{delimited, pair, preceded, separated_pair, tuple},
     IResult,
@@ -31,21 +31,63 @@ fn bracketed_expr(input: &str) -> IResult<&str, ast::Expr> {
     )(input)
 }
 
-fn binary(input: &str) -> IResult<&str, ast::Expr> {
-    fn element(input: &str) -> IResult<&str, ast::Expr> {
+pub fn binary(input: &str) -> IResult<&str, ast::Expr> {
+    fn plus_minus_operator(input: &str) -> IResult<&str, ast::Operator> {
+        delimited(
+            space0,
+            alt((
+                value(ast::Operator::OpPlus, char('+')),
+                value(ast::Operator::OpMinus, char('-')),
+            )),
+            space0,
+        )(input)
+    }
+
+    fn mult_operator(input: &str) -> IResult<&str, ast::Operator> {
+        delimited(space0, value(ast::Operator::OpMultiply, char('*')), space0)(input)
+    }
+
+    fn factor(input: &str) -> IResult<&str, ast::Expr> {
         alt((bracketed_expr, hex_literal, variable))(input)
     }
 
-    fn space_delimited_operator(input: &str) -> IResult<&str, ast::Operator> {
-        delimited(space0, operator, space0)(input)
+    fn term(input: &str) -> IResult<&str, ast::Expr> {
+        let (mut input, mut node) = factor(input)?;
+
+        loop {
+            match opt(tuple((mult_operator, factor)))(input)? {
+                (remaining_input, Some((operator, right))) => {
+                    input = remaining_input;
+                    node = ast::Expr {
+                        kind: ast::ExprKind::Binary(Box::new(node), operator, Box::new(right)),
+                    };
+                }
+                _ => break,
+            }
+        }
+
+        Ok((input, node))
     }
 
-    map(
-        tuple((element, space_delimited_operator, alt((binary, element)))),
-        |(expression1, operator, expression2)| ast::Expr {
-            kind: ast::ExprKind::Binary(Box::new(expression1), operator, Box::new(expression2)),
-        },
-    )(input)
+    fn expr(input: &str) -> IResult<&str, ast::Expr> {
+        let (mut input, mut node) = term(input)?;
+
+        loop {
+            match opt(tuple((plus_minus_operator, term)))(input)? {
+                (remaining_input, Some((operator, right))) => {
+                    input = remaining_input;
+                    node = ast::Expr {
+                        kind: ast::ExprKind::Binary(Box::new(node), operator, Box::new(right)),
+                    };
+                }
+                _ => break,
+            }
+        }
+
+        Ok((input, node))
+    }
+
+    expr(input)
 }
 
 fn hex_literal(input: &str) -> IResult<&str, ast::Expr> {
@@ -80,7 +122,7 @@ fn identifier(input: &str) -> IResult<&str, String> {
     )(input)
 }
 
-fn mov_lit_reg(input: &str) -> IResult<&str, ast::Instruction> {
+pub fn mov_lit_reg(input: &str) -> IResult<&str, ast::Instruction> {
     fn element(input: &str) -> IResult<&str, ast::Expr> {
         alt((square_braket_expr, hex_literal))(input)
     }
@@ -99,14 +141,6 @@ fn mov_lit_reg(input: &str) -> IResult<&str, ast::Instruction> {
             kind: ast::InstructionKind::MovLitReg(literal, register),
         },
     )(input)
-}
-
-fn operator(input: &str) -> IResult<&str, ast::Operator> {
-    alt((
-        value(ast::Operator::OpPlus, char('+')),
-        value(ast::Operator::OpMinus, char('-')),
-        value(ast::Operator::OpMultiply, char('*')),
-    ))(input)
 }
 
 fn register(input: &str) -> IResult<&str, ast::Register> {
@@ -201,26 +235,63 @@ mod tests {
                 ast::Expr {
                     kind: ast::ExprKind::Binary(
                         Box::new(ast::Expr {
-                            kind: ast::ExprKind::HexLiteral(0x1234)
-                        }),
-                        ast::Operator::OpMultiply,
-                        Box::new(ast::Expr {
                             kind: ast::ExprKind::Binary(
                                 Box::new(ast::Expr {
-                                    kind: ast::ExprKind::Variable(String::from("abc"))
+                                    kind: ast::ExprKind::HexLiteral(0x1234)
                                 }),
-                                ast::Operator::OpPlus,
+                                ast::Operator::OpMultiply,
                                 Box::new(ast::Expr {
-                                    kind: ast::ExprKind::HexLiteral(0x23)
+                                    kind: ast::ExprKind::Variable(String::from("abc"))
                                 })
                             )
+                        }),
+                        ast::Operator::OpPlus,
+                        Box::new(ast::Expr {
+                            kind: ast::ExprKind::HexLiteral(0x23)
                         })
                     )
                 }
             ))
         );
-        assert_eq!(binary("!a"), Err(Error(("", ErrorKind::Char))));
-        assert_eq!(binary("$01+-!cd"), Err(Error(("-!cd", ErrorKind::Tag))));
+        assert_eq!(
+            binary("$12 + (!a - (!b)) - $34"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Binary(
+                        Box::new(ast::Expr {
+                            kind: ast::ExprKind::Binary(
+                                Box::new(ast::Expr {
+                                    kind: ast::ExprKind::HexLiteral(0x12)
+                                }),
+                                ast::Operator::OpPlus,
+                                Box::new(ast::Expr {
+                                    kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
+                                        kind: ast::ExprKind::Binary(
+                                            Box::new(ast::Expr {
+                                                kind: ast::ExprKind::Variable(String::from("a"))
+                                            }),
+                                            ast::Operator::OpMinus,
+                                            Box::new(ast::Expr {
+                                                kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
+                                                    kind: ast::ExprKind::Variable(String::from(
+                                                        "b"
+                                                    ))
+                                                }))
+                                            }),
+                                        )
+                                    }))
+                                })
+                            )
+                        }),
+                        ast::Operator::OpMinus,
+                        Box::new(ast::Expr {
+                            kind: ast::ExprKind::HexLiteral(0x34)
+                        }),
+                    )
+                }
+            ))
+        );
     }
 
     #[test]
@@ -292,11 +363,11 @@ mod tests {
                     kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
                         kind: ast::ExprKind::Binary(
                             Box::new(ast::Expr {
-                                kind: ast::ExprKind::Variable(String::from("fg"))
-                            }),
-                            ast::Operator::OpMinus,
-                            Box::new(ast::Expr {
                                 kind: ast::ExprKind::Binary(
+                                    Box::new(ast::Expr {
+                                        kind: ast::ExprKind::Variable(String::from("fg"))
+                                    }),
+                                    ast::Operator::OpMinus,
                                     Box::new(ast::Expr {
                                         kind: ast::ExprKind::Bracket(Box::new(ast::Expr {
                                             kind: ast::ExprKind::Binary(
@@ -325,12 +396,12 @@ mod tests {
                                                 })
                                             )
                                         }))
-                                    }),
-                                    ast::Operator::OpPlus,
-                                    Box::new(ast::Expr {
-                                        kind: ast::ExprKind::HexLiteral(0x5)
                                     })
                                 )
+                            }),
+                            ast::Operator::OpPlus,
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::HexLiteral(0x5)
                             })
                         )
                     }))
@@ -438,13 +509,6 @@ mod tests {
     }
 
     #[test]
-    fn operator_test() {
-        assert_eq!(operator("+"), Ok(("", ast::Operator::OpPlus)));
-        assert_eq!(operator("-"), Ok(("", ast::Operator::OpMinus)));
-        assert_eq!(operator("*"), Ok(("", ast::Operator::OpMultiply)));
-    }
-
-    #[test]
     fn register_test() {
         assert_eq!(register("R1"), Ok(("", ast::Register::R1)));
         assert_eq!(register("r4"), Ok(("", ast::Register::R4)));
@@ -499,19 +563,19 @@ mod tests {
                     kind: ast::ExprKind::SquareBracket(Box::new(ast::Expr {
                         kind: ast::ExprKind::Binary(
                             Box::new(ast::Expr {
-                                kind: ast::ExprKind::HexLiteral(0x9876)
-                            }),
-                            ast::Operator::OpMultiply,
-                            Box::new(ast::Expr {
                                 kind: ast::ExprKind::Binary(
                                     Box::new(ast::Expr {
-                                        kind: ast::ExprKind::Variable(String::from("zyx"))
+                                        kind: ast::ExprKind::HexLiteral(0x9876)
                                     }),
-                                    ast::Operator::OpPlus,
+                                    ast::Operator::OpMultiply,
                                     Box::new(ast::Expr {
-                                        kind: ast::ExprKind::HexLiteral(0x43)
+                                        kind: ast::ExprKind::Variable(String::from("zyx"))
                                     })
                                 )
+                            }),
+                            ast::Operator::OpPlus,
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::HexLiteral(0x43)
                             })
                         )
                     }))
