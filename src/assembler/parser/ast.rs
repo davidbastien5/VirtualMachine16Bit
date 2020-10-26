@@ -1,15 +1,16 @@
 #[derive(Debug, PartialEq)]
 pub struct Expr {
-    pub kind: ExprKind
+    pub kind: ExprKind,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum ExprKind {
+    Address(u16),
     Binary(Box<Expr>, Operator, Box<Expr>),
     Bracket(Box<Expr>),
     HexLiteral(u16),
     SquareBracket(Box<Expr>),
-    Variable(String)
+    Variable(String),
 }
 
 #[derive(Debug, PartialEq)]
@@ -19,14 +20,20 @@ pub struct Instruction {
 
 #[derive(Debug, PartialEq)]
 pub enum InstructionKind {
+    MovLitMem(Expr, Expr),
+    MovLitOffsetReg(Expr, Register, Register),
     MovLitReg(Expr, Register),
+    MovMemReg(Expr, Register),
+    MovRegMem(Register, Expr),
+    MovRegReg(Register, Register),
+    MovRegPtrReg(Register, Register),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Operator {
     OpPlus,
     OpMinus,
-    OpMultiply
+    OpMultiply,
 }
 
 #[derive(Clone, Debug, PartialEq)]

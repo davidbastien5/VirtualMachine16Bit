@@ -3,9 +3,17 @@ use nom::{
     branch::alt,
     character::complete::{char, space0},
     combinator::{map, opt, value},
-    sequence::{delimited, tuple},
+    sequence::{delimited, preceded, tuple},
     IResult,
 };
+
+pub fn address_expr(input: &str) -> IResult<&str, ast::Expr> {
+    fn address_square_bracket_expr(input: &str) -> IResult<&str, ast::Expr> {
+        preceded(char('&'), square_braket_expr)(input)
+    }
+
+    alt((types::address, address_square_bracket_expr))(input)
+}
 
 pub fn bracketed_expr(input: &str) -> IResult<&str, ast::Expr> {
     fn element(input: &str) -> IResult<&str, ast::Expr> {
@@ -87,6 +95,10 @@ pub fn binary(input: &str) -> IResult<&str, ast::Expr> {
     expr(input)
 }
 
+pub fn literal_expr(input: &str) -> IResult<&str, ast::Expr> {
+    alt((square_braket_expr, types::hex_literal))(input)
+}
+
 pub fn square_braket_expr(input: &str) -> IResult<&str, ast::Expr> {
     fn element(input: &str) -> IResult<&str, ast::Expr> {
         alt((bracketed_expr, types::hex_literal, types::variable))(input)
@@ -112,6 +124,38 @@ pub fn square_braket_expr(input: &str) -> IResult<&str, ast::Expr> {
 mod tests {
     use super::*;
     use nom::{error::ErrorKind, Err::Error};
+
+    #[test]
+    fn address_expr_test() {
+        assert_eq!(
+            address_expr("&89"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Address(0x89)
+                }
+            ))
+        );
+        assert_eq!(
+            address_expr("&[$12 * $34]"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::SquareBracket(Box::new(ast::Expr {
+                        kind: ast::ExprKind::Binary(
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::HexLiteral(0x12)
+                            }),
+                            ast::Operator::OpMultiply,
+                            Box::new(ast::Expr {
+                                kind: ast::ExprKind::HexLiteral(0x34)
+                            })
+                        )
+                    }))
+                }
+            ))
+        )
+    }
 
     #[test]
     fn binary_test() {
@@ -329,6 +373,30 @@ mod tests {
                 }
             ))
         )
+    }
+
+    #[test]
+    fn literal_expr_test() {
+        assert_eq!(
+            literal_expr("$12"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::HexLiteral(0x12)
+                }
+            ))
+        );
+        assert_eq!(
+            literal_expr("[$12]"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::SquareBracket(Box::new(ast::Expr {
+                        kind: ast::ExprKind::HexLiteral(0x12)
+                    }))
+                }
+            ))
+        );
     }
 
     #[test]

@@ -8,17 +8,25 @@ use nom::{
     sequence::{pair, preceded},
     IResult,
 };
-use std::num::ParseIntError;
+
+pub fn address(input: &str) -> IResult<&str, ast::Expr> {
+    preceded(
+        char('&'),
+        map(hex_digit, |address| ast::Expr {
+            kind: ast::ExprKind::Address(address),
+        }),
+    )(input)
+}
+
+pub fn hex_digit(input: &str) -> IResult<&str, u16> {
+    map_res(hex_digit1, |input| u16::from_str_radix(input, 16))(input)
+}
 
 pub fn hex_literal(input: &str) -> IResult<&str, ast::Expr> {
     preceded(
         char('$'),
-        map_res(hex_digit1, |input| -> Result<ast::Expr, ParseIntError> {
-            let hex_lit = u16::from_str_radix(input, 16)?;
-
-            Ok(ast::Expr {
-                kind: ast::ExprKind::HexLiteral(hex_lit),
-            })
+        map(hex_digit, |hex_lit| ast::Expr {
+            kind: ast::ExprKind::HexLiteral(hex_lit),
         }),
     )(input)
 }
@@ -59,6 +67,10 @@ pub fn register(input: &str) -> IResult<&str, ast::Register> {
     ))(input)
 }
 
+pub fn register_pointer(input: &str) -> IResult<&str, ast::Register> {
+    preceded(char('&'), register)(input)
+}
+
 pub fn variable(input: &str) -> IResult<&str, ast::Expr> {
     map(preceded(tag("!"), identifier), |identifier| ast::Expr {
         kind: ast::ExprKind::Variable(identifier),
@@ -69,6 +81,34 @@ pub fn variable(input: &str) -> IResult<&str, ast::Expr> {
 mod tests {
     use super::*;
     use nom::{error::ErrorKind, Err::Error};
+
+    #[test]
+    fn address_test() {
+        assert_eq!(
+            address("&1234"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Address(0x1234)
+                }
+            ))
+        );
+        assert_eq!(
+            address("&0"),
+            Ok((
+                "",
+                ast::Expr {
+                    kind: ast::ExprKind::Address(0x0)
+                }
+            ))
+        );
+        assert_eq!(address("&89"), Ok((
+            "",
+            ast::Expr {
+                kind: ast::ExprKind::Address(0x89)
+            }
+        )));
+    }
 
     #[test]
     fn hex_literal_test() {
