@@ -17,9 +17,9 @@ fn main() {
 
 fn run() -> Result<(), String> {
     
-    let test = "mov $42, &r1, r4";
+    let test = "hlt";
     
-    let ast = parser::instructions::mov(test)
+    let ast = parser::instructions::instruction(test)
         .map(|parser_result| parser_result.1)
         .map_err(|err| format!("Unable to parse the instruction: {}", err))?;
 
