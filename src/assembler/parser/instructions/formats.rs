@@ -137,6 +137,26 @@ where
     }
 }
 
+pub fn reg_lit<F>(mnemonic: String, mapper: F) -> impl Fn(&str) -> IResult<&str, ast::Instruction>
+where
+    F: Fn(ast::Register, ast::Expr) -> ast::Instruction,
+{
+    move |input: &str| {
+        map(
+            delimited(
+                tuple((tag_no_case(&mnemonic[..]), space1)),
+                separated_pair(
+                    types::register,
+                    space_delimited_comma,
+                    expressions::literal_expr,
+                ),
+                space0,
+            ),
+            |(register, literal_expr)| mapper(register, literal_expr),
+        )(input)
+    }
+}
+
 pub fn reg_mem<F>(mnemonic: String, mapper: F) -> impl Fn(&str) -> IResult<&str, ast::Instruction>
 where
     F: Fn(ast::Register, ast::Expr) -> ast::Instruction,

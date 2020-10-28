@@ -180,9 +180,9 @@ fn jne(input: &str) -> IResult<&str, ast::Instruction> {
 
 fn lsf(input: &str) -> IResult<&str, ast::Instruction> {
     alt((
-        formats::lit_reg(String::from("lsf"), |literal_expr, register| {
+        formats::reg_lit(String::from("lsf"), |register, literal_expr| {
             ast::Instruction {
-                kind: ast::InstructionKind::LsfLitReg(literal_expr, register),
+                kind: ast::InstructionKind::LsfRegLit(register, literal_expr),
             }
         }),
         formats::reg_reg(String::from("lsf"), |register1, register2| {
@@ -294,9 +294,9 @@ fn ret(input: &str) -> IResult<&str, ast::Instruction> {
 
 fn rsf(input: &str) -> IResult<&str, ast::Instruction> {
     alt((
-        formats::lit_reg(String::from("rsf"), |literal_expr, register| {
+        formats::reg_lit(String::from("rsf"), |register, literal_expr| {
             ast::Instruction {
-                kind: ast::InstructionKind::RsfLitReg(literal_expr, register),
+                kind: ast::InstructionKind::RsfRegLit(register, literal_expr),
             }
         }),
         formats::reg_reg(String::from("rsf"), |register1, register2| {
@@ -312,6 +312,11 @@ fn sub(input: &str) -> IResult<&str, ast::Instruction> {
         formats::lit_reg(String::from("sub"), |literal_expr, register| {
             ast::Instruction {
                 kind: ast::InstructionKind::SubLitReg(literal_expr, register),
+            }
+        }),
+        formats::reg_lit(String::from("sub"), |register, literal_expr| {
+            ast::Instruction {
+                kind: ast::InstructionKind::SubRegLit(register, literal_expr),
             }
         }),
         formats::reg_reg(String::from("sub"), |register1, register2| {
